@@ -113,7 +113,7 @@ func (commander *Commander) Run() error {
 	}
 
 	if subcommand != nil {
-		err := subcommand.Start(flagSet)
+		err := subcommand.Start()
 		if err != nil {
 			go_logger.Logger.Error(err)
 			return nil
