@@ -12,7 +12,7 @@ import (
 type ISubcommand interface {
 	DecorateFlagSet(flagSet *flag.FlagSet) error
 	// 启动子命令
-	Start(flagSet *flag.FlagSet) error
+	Start() error
 }
 
 type Commander struct {
