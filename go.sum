@@ -18,6 +18,8 @@ github.com/pefish/go-config v0.1.12/go.mod h1:BcBZ+bEn/aLJrCYd6Edvrqujt9HY3nejAf
 github.com/pefish/go-interface-logger v0.0.3/go.mod h1:pK7ubPKzuo8oNyh3cXQPQDZiFvWeOZy6NW0Pba7soVI=
 github.com/pefish/go-logger v0.3.1 h1:NE+m6MxlX7MfuH6D5gNCHXV3Wa7J4wvlGUO3bR3+JNI=
 github.com/pefish/go-logger v0.3.1/go.mod h1:sg2r6mmE/lSs/+yeT7HLm8XwWVM6eoUTmbfpJxlDPIE=
+github.com/pefish/go-logger v0.3.2 h1:1F3BgMST0b5WReWe1GYvw0kEkOI9tgVE/LtgCqFjshk=
+github.com/pefish/go-logger v0.3.2/go.mod h1:+rhqBiXltFoM3ZnpPU6CXaVpLNuvMl1kmMmKLUb0PPY=
 github.com/pefish/go-reflect v0.2.0 h1:EUB7sDyRdAHkB8SxZcsLgkDgS1X/5yUrNFhNwSbPfBE=
 github.com/pefish/go-reflect v0.2.0/go.mod h1:KTxD5dhPvgUFiL+v2cxvYH/u4qEf7MPI+RouiiMNnRk=
 github.com/pkg/errors v0.8.1 h1:iURUrRGxPUNPdy5/HRSm+Yj6okJ6UtLINN0Q9M4+h3I=
