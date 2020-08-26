@@ -6,6 +6,7 @@ import (
 	commander2 "github.com/pefish/go-commander"
 	go_config "github.com/pefish/go-config"
 	"log"
+	_ "net/http/pprof"
 )
 
 

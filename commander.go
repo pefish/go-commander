@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/pefish/go-config"
 	"github.com/pefish/go-logger"
+	"github.com/pkg/errors"
+	"net/http"
 	"os"
 	"strings"
 )
@@ -60,7 +62,7 @@ func (commander *Commander) Run() error {
 	if ok {
 		subcommand = subcommandTemp
 	} else {
-		return fmt.Errorf("subcommand error: %s", key)
+		return errors.Errorf("subcommand error: %s", key)
 	}
 
 	flagSet := flag.NewFlagSet(commander.appName, flag.ExitOnError)
@@ -74,6 +76,8 @@ func (commander *Commander) Run() error {
 	printVersion := flagSet.Bool("version", false, "print version string")
 	logLevel := flagSet.String("log-level", "info", "set log verbosity: debug, info, warn, or error")
 	configFile := flagSet.String("config", "", "path to config file")
+	pprofEnable := flagSet.Bool("enable-pprof", false, "enable pprof")
+	pprofAddress := flagSet.String("pprof-address", "0.0.0.0:9191", "<addr>:<port> to listen on for pprof")
 
 	if commander.fnToSetCommonFlags != nil {
 		commander.fnToSetCommonFlags(flagSet)
@@ -82,7 +86,7 @@ func (commander *Commander) Run() error {
 	if subcommand != nil {
 		err := subcommand.DecorateFlagSet(flagSet)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "decorate flagSet error")
 		}
 	}
 
@@ -92,7 +96,7 @@ func (commander *Commander) Run() error {
 	}
 	err := flagSet.Parse(argsToParse)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "parse flagSet error")
 	}
 
 	if configFile != nil && *configFile != "" {
@@ -100,7 +104,7 @@ func (commander *Commander) Run() error {
 			ConfigFilepath: *configFile,
 		})
 		if err != nil {
-			return fmt.Errorf("load config file error - %s", err)
+			return errors.Errorf("load config file error - %s", err)
 		}
 	}
 	go_config.Config.MergeFlagSet(flagSet)
@@ -112,14 +116,24 @@ func (commander *Commander) Run() error {
 		os.Exit(0)
 	}
 
-	if subcommand != nil {
-		err := subcommand.Start()
-		if err != nil {
-			go_logger.Logger.Error(err)
-			return nil
-		}
-	} else {
-		return fmt.Errorf("subcommand error: %s", key)
+	if subcommand == nil {
+		return errors.Errorf("subcommand error: %s", key)
+	}
+
+	if pprofEnable != nil && *pprofEnable {
+		pprofHttpServer := &http.Server{Addr: *pprofAddress}
+		go func() {  // 无需担心进程退出，不存在leak
+			go_logger.Logger.InfoF("started pprof server on %s, you can open url [http://%s/debug/pprof/] to enjoy!!", pprofHttpServer.Addr, pprofHttpServer.Addr)
+			err := pprofHttpServer.ListenAndServe()
+			if err != nil {
+				go_logger.Logger.WarnF("pprof server start error - %s", err)
+			}
+		}()
+	}
+
+	err = subcommand.Start()
+	if err != nil {
+		return errors.Wrap(err, "subCommand execute error")
 	}
 	return nil
 }
