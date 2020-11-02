@@ -75,7 +75,8 @@ func (commander *Commander) Run() error {
 	}
 	printVersion := flagSet.Bool("version", false, "print version string")
 	logLevel := flagSet.String("log-level", "info", "set log verbosity: debug, info, warn, or error")
-	configFile := flagSet.String("config", "", "path to config file")
+	configFile := flagSet.String("config", os.Getenv("GO_CONFIG"), "path to config file")
+	secretFile := flagSet.String("secret-file", os.Getenv("GO_SECRET"), "path to secret file")
 	pprofEnable := flagSet.Bool("enable-pprof", false, "enable pprof")
 	pprofAddress := flagSet.String("pprof-address", "0.0.0.0:9191", "<addr>:<port> to listen on for pprof")
 
@@ -99,16 +100,19 @@ func (commander *Commander) Run() error {
 		return errors.Wrap(err, "parse flagSet error")
 	}
 
-	if configFile != nil && *configFile != "" {
-		err := go_config.Config.LoadYamlConfig(go_config.Configuration{
-			ConfigFilepath: *configFile,
-		})
-		if err != nil {
-			return errors.Errorf("load config file error - %s", err)
-		}
+	err = go_config.Config.LoadConfig(go_config.Configuration{
+		ConfigFilepath: *configFile,
+		SecretFilepath: *secretFile,
+	})
+	if err != nil {
+		return errors.Errorf("load config file error - %s", err)
 	}
 	go_config.Config.MergeFlagSet(flagSet)
-
+	envKeyPairs := make(map[string]string, 5)
+	for k, _ := range go_config.Config.Configs() {
+		envKeyPairs[strings.ToUpper(k)] = k
+	}
+	go_config.Config.MergeEnvs(envKeyPairs)
 	go_logger.Logger = go_logger.NewLogger(*logLevel)
 
 	if *printVersion {

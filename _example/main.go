@@ -37,3 +37,36 @@ func main() {
 		log.Fatal(err)
 	}
 }
+
+// go run ./_example/main.go -test=76573 -testtest=11
+// Output:
+// 76573
+// 11
+
+
+// go run ./_example/main.go -testtest=11
+// Output:
+// haha
+// 11
+
+// go run ./_example/main.go -config=./_example/config.yaml -testtest=11
+// Output:
+// xixi
+// 11
+
+// go run ./_example/main.go -secret-file=./_example/secret.yaml -test=11
+// Output:
+// 11
+// secretxixi
+
+// GO_SECRET=./_example/secret.yaml go run ./_example/main.go -test=11
+// Output:
+// 11
+// secretxixi
+
+// TEST=22 go run ./_example/main.go
+// Output:
+// 22
+//
+
+
