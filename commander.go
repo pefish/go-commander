@@ -8,13 +8,17 @@ import (
 	"github.com/pkg/errors"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 )
 
 type ISubcommand interface {
 	DecorateFlagSet(flagSet *flag.FlagSet) error
 	// 启动子命令
 	Start() error
+	// 用于优雅退出
+	OnExited() error
 }
 
 type Commander struct {
@@ -136,9 +140,25 @@ func (commander *Commander) Run() error {
 		}()
 	}
 
-	err = subcommand.Start()
-	if err != nil {
-		return errors.Wrap(err, "subCommand execute error")
+	waitExit := make(chan error)
+	go func() {
+		waitExit <- subcommand.Start()
+	}()
+
+	exitChan := make(chan os.Signal)
+	signal.Notify(exitChan, syscall.SIGINT, syscall.SIGTERM)
+	select {
+	case <- exitChan:
+		err := subcommand.OnExited()
+		if err != nil {
+			go_logger.Logger.Error(errors.WithMessage(err, "OnExited failed"))
+		}
+		return nil
+	case result := <- waitExit:
+		err := subcommand.OnExited()
+		if err != nil {
+			go_logger.Logger.Error(errors.WithMessage(err, "OnExited failed"))
+		}
+		return result
 	}
-	return nil
 }

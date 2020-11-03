@@ -22,6 +22,12 @@ func (t TestSubCommand) DecorateFlagSet(flagSet *flag.FlagSet) error {
 func (t TestSubCommand) Start() error {
 	fmt.Println(go_config.Config.MustGetString("test"))
 	fmt.Println(go_config.Config.MustGetString("test-test"))
+
+	return nil
+}
+
+func (t TestSubCommand) OnExited() error {
+	fmt.Println("OnExited")
 	return nil
 }
 
@@ -38,7 +44,7 @@ func main() {
 	}
 }
 
-// go run ./_example/main.go -test=76573 -testtest=11
+// go run ./_example/main.go -test=76573 -test-test=11
 // Output:
 // 76573
 // 11
