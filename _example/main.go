@@ -21,7 +21,7 @@ func (t TestSubCommand) DecorateFlagSet(flagSet *flag.FlagSet) error {
 
 func (t TestSubCommand) Start() error {
 	fmt.Println(go_config.Config.MustGetString("test"))
-	fmt.Println(go_config.Config.MustGetString("testtest"))
+	fmt.Println(go_config.Config.MustGetString("test-test"))
 	return nil
 }
 
@@ -30,7 +30,7 @@ func main() {
 	commander.RegisterSubcommand("test", TestSubCommand{})
 	commander.RegisterDefaultSubcommand(TestSubCommand{})
 	commander.RegisterFnToSetCommonFlags(func(flagSet *flag.FlagSet) {
-		flagSet.String("testtest", "", "path to config file")
+		flagSet.String("test-test", "", "path to config file")
 	})
 	err := commander.Run()
 	if err != nil {
@@ -69,4 +69,7 @@ func main() {
 // 22
 //
 
-
+// TEST_TEST=111 go run ./_example/main.go
+// Output:
+// haha
+// 111

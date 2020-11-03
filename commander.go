@@ -110,7 +110,8 @@ func (commander *Commander) Run() error {
 	go_config.Config.MergeFlagSet(flagSet)
 	envKeyPairs := make(map[string]string, 5)
 	for k, _ := range go_config.Config.Configs() {
-		envKeyPairs[strings.ToUpper(k)] = k
+		env := strings.ReplaceAll(strings.ToUpper(k), "-", "_")
+		envKeyPairs[env] = k
 	}
 	go_config.Config.MergeEnvs(envKeyPairs)
 	go_logger.Logger = go_logger.NewLogger(*logLevel)

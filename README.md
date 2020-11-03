@@ -73,6 +73,8 @@ go run ./_example/main.go -test=76573 -testtest=11
 
 优先级是：命令行选项 > 环境变量 > 配置文件 > 默认值
 
+**注意：环境变量传递配置项时，`-`使用`_`代替，例如`TEST_TEST`将会代替`test-test`，也会代替`test_test`**
+
 ## Security Vulnerabilities
 
 If you discover a security vulnerability, please send an e-mail to [pefish@qq.com](mailto:pefish@qq.com). All security vulnerabilities will be promptly addressed.
