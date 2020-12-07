@@ -16,7 +16,7 @@ import (
 type ISubcommand interface {
 	DecorateFlagSet(flagSet *flag.FlagSet) error
 	// 启动子命令
-	Start() error
+	Start(data StartData) error
 	// 用于优雅退出
 	OnExited() error
 }
@@ -27,6 +27,15 @@ type Commander struct {
 	appName     string
 	appDesc     string
 	fnToSetCommonFlags func(flagSet *flag.FlagSet)
+
+	data StartData
+}
+
+type StartData struct {
+	DataDir string
+	LogLevel string
+	ConfigFile string
+	SecretFile string
 }
 
 func NewCommander(appName, version, appDesc string) *Commander {
@@ -83,6 +92,7 @@ func (commander *Commander) Run() error {
 	secretFile := flagSet.String("secret-file", os.Getenv("GO_SECRET"), "path to secret file")
 	pprofEnable := flagSet.Bool("enable-pprof", false, "enable pprof")
 	pprofAddress := flagSet.String("pprof-address", "0.0.0.0:9191", "<addr>:<port> to listen on for pprof")
+	dataDir := flagSet.String("data-dir", os.ExpandEnv("$HOME/.") + commander.appName, "data dictionary")
 
 	if commander.fnToSetCommonFlags != nil {
 		commander.fnToSetCommonFlags(flagSet)
@@ -103,6 +113,11 @@ func (commander *Commander) Run() error {
 	if err != nil {
 		return errors.Wrap(err, "parse flagSet error")
 	}
+
+	commander.data.DataDir = *dataDir
+	commander.data.LogLevel = *logLevel
+	commander.data.ConfigFile = *configFile
+	commander.data.SecretFile = *secretFile
 
 	err = go_config.Config.LoadConfig(go_config.Configuration{
 		ConfigFilepath: *configFile,
@@ -142,7 +157,7 @@ func (commander *Commander) Run() error {
 
 	waitExit := make(chan error)
 	go func() {
-		waitExit <- subcommand.Start()
+		waitExit <- subcommand.Start(commander.data)
 	}()
 
 	exitChan := make(chan os.Signal)

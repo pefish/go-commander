@@ -15,19 +15,19 @@ type TestSubCommand struct {
 }
 
 func (t TestSubCommand) DecorateFlagSet(flagSet *flag.FlagSet) error {
-	flagSet.String("test", "haha", "")
+	flagSet.String("test", "default-flag-test", "")
 	return nil
 }
 
-func (t TestSubCommand) Start() error {
-	fmt.Println(go_config.Config.MustGetString("test"))
-	fmt.Println(go_config.Config.MustGetString("test-test"))
+func (t TestSubCommand) Start(data commander2.StartData) error {
+	fmt.Println("test", go_config.Config.MustGetString("test"))
+	fmt.Println("test-test", go_config.Config.MustGetString("test-test"))
 
 	return nil
 }
 
 func (t TestSubCommand) OnExited() error {
-	fmt.Println("OnExited")
+	//fmt.Println("OnExited")
 	return nil
 }
 
@@ -44,38 +44,38 @@ func main() {
 	}
 }
 
-// go run ./_example/main.go -test=76573 -test-test=11
+// go run ./_example/main.go -test=cmd-test -test-test=cmd-test-test
 // Output:
-// 76573
-// 11
+// test cmd-test
+// test-test cmd-test-test
 
 
-// go run ./_example/main.go -testtest=11
+// go run ./_example/main.go -test-test=cmd-test-test
 // Output:
-// haha
-// 11
+// test default-flag-test
+// test-test cmd-test-test
 
-// go run ./_example/main.go -config=./_example/config.yaml -testtest=11
+// go run ./_example/main.go -config=./_example/config.yaml -test-test=cmd-test-test
 // Output:
-// xixi
-// 11
+// test config-file-test
+// test-test cmd-test-test
 
-// go run ./_example/main.go -secret-file=./_example/secret.yaml -test=11
+// go run ./_example/main.go -secret-file=./_example/secret.yaml -test=cmd-test
 // Output:
-// 11
-// secretxixi
+// test cmd-test
+// test-test secret-file-test-test
 
-// GO_SECRET=./_example/secret.yaml go run ./_example/main.go -test=11
+// GO_SECRET=./_example/secret.yaml go run ./_example/main.go -test=cmd-test
 // Output:
-// 11
-// secretxixi
+// test cmd-test
+// test-test secret-file-test-test
 
-// TEST=22 go run ./_example/main.go
+// TEST=env-test go run ./_example/main.go
 // Output:
-// 22
-//
+// test env-test
+// test-test
 
-// TEST_TEST=111 go run ./_example/main.go
+// TEST_TEST=env-test-test go run ./_example/main.go
 // Output:
-// haha
-// 111
+// test default-flag-test
+// test-test env-test-test
