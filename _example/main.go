@@ -32,6 +32,7 @@ func (t TestSubCommand) OnExited() error {
 }
 
 func main() {
+	//go_logger.Logger.Error(errors.WithMessage(errors.New("123"), "ywrtsdfhs"))
 	commander := commander2.NewCommander("test", "v0.0.1", "")
 	commander.RegisterSubcommand("test", TestSubCommand{})
 	commander.RegisterDefaultSubcommand(TestSubCommand{})

@@ -170,6 +170,9 @@ func (commander *Commander) Run() error {
 		}
 		return nil
 	case result := <- waitExit:
+		if result != nil {
+			go_logger.Logger.Error(result)
+		}
 		err := subcommand.OnExited()
 		if err != nil {
 			go_logger.Logger.Error(errors.WithMessage(err, "OnExited failed"))
