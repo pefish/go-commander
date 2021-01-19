@@ -196,32 +196,40 @@ func (commander *Commander) Run() error {
 	signal.Notify(exitChan, syscall.SIGINT, syscall.SIGTERM)
 	select {
 	case <-exitChan:
-		err := commander.onExited()
+		err := commander.onExitedBefore()
 		if err != nil {
-			go_logger.Logger.Error(errors.WithMessage(err, "commander OnExited failed"))
+			go_logger.Logger.Error(errors.WithMessage(err, "commander OnExitedBefore failed"))
 		}
 		err = subcommand.OnExited()
 		if err != nil {
 			go_logger.Logger.Error(errors.WithMessage(err, "OnExited failed"))
+		}
+		err = commander.onExitedAfter()
+		if err != nil {
+			go_logger.Logger.Error(errors.WithMessage(err, "commander OnExitedAfter failed"))
 		}
 		return nil
 	case result := <-waitExit:
 		if result != nil {
 			go_logger.Logger.Error(result)
 		}
-		err := commander.onExited()
+		err := commander.onExitedBefore()
 		if err != nil {
-			go_logger.Logger.Error(errors.WithMessage(err, "commander OnExited failed"))
+			go_logger.Logger.Error(errors.WithMessage(err, "commander OnExitedBefore failed"))
 		}
 		err = subcommand.OnExited()
 		if err != nil {
 			go_logger.Logger.Error(errors.WithMessage(err, "OnExited failed"))
 		}
+		err = commander.onExitedAfter()
+		if err != nil {
+			go_logger.Logger.Error(errors.WithMessage(err, "commander OnExitedAfter failed"))
+		}
 		return result
 	}
 }
 
-func (commander *Commander) onExited() error {
+func (commander *Commander) onExitedAfter() error {
 	if commander.data.Cache != nil {
 		err := commander.cacheFs.Truncate(0)
 		if err != nil {
@@ -241,5 +249,9 @@ func (commander *Commander) onExited() error {
 		}
 	}
 
+	return nil
+}
+
+func (commander *Commander) onExitedBefore() error {
 	return nil
 }
