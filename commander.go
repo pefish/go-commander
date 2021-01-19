@@ -20,7 +20,7 @@ type ISubcommand interface {
 	// 启动子命令
 	Start(data *StartData) error
 	// 用于优雅退出
-	OnExited() error
+	OnExited(data *StartData) error
 }
 
 type Commander struct {
@@ -200,7 +200,7 @@ func (commander *Commander) Run() error {
 		if err != nil {
 			go_logger.Logger.Error(errors.WithMessage(err, "commander OnExitedBefore failed"))
 		}
-		err = subcommand.OnExited()
+		err = subcommand.OnExited(commander.data)
 		if err != nil {
 			go_logger.Logger.Error(errors.WithMessage(err, "OnExited failed"))
 		}
@@ -217,7 +217,7 @@ func (commander *Commander) Run() error {
 		if err != nil {
 			go_logger.Logger.Error(errors.WithMessage(err, "commander OnExitedBefore failed"))
 		}
-		err = subcommand.OnExited()
+		err = subcommand.OnExited(commander.data)
 		if err != nil {
 			go_logger.Logger.Error(errors.WithMessage(err, "OnExited failed"))
 		}
