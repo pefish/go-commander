@@ -183,7 +183,9 @@ func (commander *Commander) Run() error {
 	if err != nil {
 		return err
 	}
-	commander.data.Cache = b
+	if len(b) != 0 {
+		commander.data.Cache = b
+	}
 
 	waitExit := make(chan error)
 	go func() {
