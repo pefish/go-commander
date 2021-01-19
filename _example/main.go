@@ -19,7 +19,7 @@ func (t TestSubCommand) DecorateFlagSet(flagSet *flag.FlagSet) error {
 	return nil
 }
 
-func (t TestSubCommand) Start(data commander2.StartData) error {
+func (t TestSubCommand) Start(data *commander2.StartData) error {
 	fmt.Println("test", go_config.Config.MustGetString("test"))
 	fmt.Println("test-test", go_config.Config.MustGetString("test-test"))
 

@@ -6,9 +6,11 @@ import (
 	"github.com/pefish/go-config"
 	"github.com/pefish/go-logger"
 	"github.com/pkg/errors"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
+	"path"
 	"strings"
 	"syscall"
 )
@@ -16,26 +18,29 @@ import (
 type ISubcommand interface {
 	DecorateFlagSet(flagSet *flag.FlagSet) error
 	// 启动子命令
-	Start(data StartData) error
+	Start(data *StartData) error
 	// 用于优雅退出
 	OnExited() error
 }
 
 type Commander struct {
-	subcommands map[string]ISubcommand
-	version     string
-	appName     string
-	appDesc     string
+	subcommands        map[string]ISubcommand
+	version            string
+	appName            string
+	appDesc            string
 	fnToSetCommonFlags func(flagSet *flag.FlagSet)
 
-	data StartData
+	data *StartData
+
+	cacheFs *os.File
 }
 
 type StartData struct {
-	DataDir string
-	LogLevel string
+	DataDir    string
+	LogLevel   string
 	ConfigFile string
 	SecretFile string
+	Cache      []byte
 }
 
 func NewCommander(appName, version, appDesc string) *Commander {
@@ -44,6 +49,7 @@ func NewCommander(appName, version, appDesc string) *Commander {
 		version:     version,
 		appName:     appName,
 		appDesc:     appDesc,
+		data:        new(StartData),
 	}
 }
 
@@ -92,7 +98,7 @@ func (commander *Commander) Run() error {
 	secretFile := flagSet.String("secret-file", os.Getenv("GO_SECRET"), "path to secret file")
 	pprofEnable := flagSet.Bool("enable-pprof", false, "enable pprof")
 	pprofAddress := flagSet.String("pprof-address", "0.0.0.0:9191", "<addr>:<port> to listen on for pprof")
-	dataDir := flagSet.String("data-dir", os.ExpandEnv("$HOME/.") + commander.appName, "data dictionary")
+	dataDir := flagSet.String("data-dir", os.ExpandEnv("$HOME/.")+commander.appName, "data dictionary")
 
 	if commander.fnToSetCommonFlags != nil {
 		commander.fnToSetCommonFlags(flagSet)
@@ -114,7 +120,20 @@ func (commander *Commander) Run() error {
 		return errors.Wrap(err, "parse flagSet error")
 	}
 
-	commander.data.DataDir = *dataDir
+	dataDirStr := *dataDir
+	fsStat, err := os.Stat(dataDirStr)
+	if err != nil {
+		if strings.Contains(err.Error(), "no such file or directory") || fsStat == nil || !fsStat.IsDir() {
+			err = os.Mkdir(dataDirStr, 0755)
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	}
+
+	commander.data.DataDir = dataDirStr
 	commander.data.LogLevel = *logLevel
 	commander.data.ConfigFile = *configFile
 	commander.data.SecretFile = *secretFile
@@ -146,7 +165,7 @@ func (commander *Commander) Run() error {
 
 	if pprofEnable != nil && *pprofEnable {
 		pprofHttpServer := &http.Server{Addr: *pprofAddress}
-		go func() {  // 无需担心进程退出，不存在leak
+		go func() { // 无需担心进程退出，不存在leak
 			go_logger.Logger.InfoF("started pprof server on %s, you can open url [http://%s/debug/pprof/] to enjoy!!", pprofHttpServer.Addr, pprofHttpServer.Addr)
 			err := pprofHttpServer.ListenAndServe()
 			if err != nil {
@@ -154,6 +173,17 @@ func (commander *Commander) Run() error {
 			}
 		}()
 	}
+
+	// load cache
+	commander.cacheFs, err = os.OpenFile(path.Join(commander.data.DataDir, "data.json"), os.O_RDWR|os.O_CREATE, 0666)
+	if err != nil {
+		return err
+	}
+	b, err := ioutil.ReadAll(commander.cacheFs)
+	if err != nil {
+		return err
+	}
+	commander.data.Cache = b
 
 	waitExit := make(chan error)
 	go func() {
@@ -163,20 +193,51 @@ func (commander *Commander) Run() error {
 	exitChan := make(chan os.Signal)
 	signal.Notify(exitChan, syscall.SIGINT, syscall.SIGTERM)
 	select {
-	case <- exitChan:
-		err := subcommand.OnExited()
+	case <-exitChan:
+		err := commander.onExited()
+		if err != nil {
+			go_logger.Logger.Error(errors.WithMessage(err, "commander OnExited failed"))
+		}
+		err = subcommand.OnExited()
 		if err != nil {
 			go_logger.Logger.Error(errors.WithMessage(err, "OnExited failed"))
 		}
 		return nil
-	case result := <- waitExit:
+	case result := <-waitExit:
 		if result != nil {
 			go_logger.Logger.Error(result)
 		}
-		err := subcommand.OnExited()
+		err := commander.onExited()
+		if err != nil {
+			go_logger.Logger.Error(errors.WithMessage(err, "commander OnExited failed"))
+		}
+		err = subcommand.OnExited()
 		if err != nil {
 			go_logger.Logger.Error(errors.WithMessage(err, "OnExited failed"))
 		}
 		return result
 	}
+}
+
+func (commander *Commander) onExited() error {
+	if commander.data.Cache != nil {
+		err := commander.cacheFs.Truncate(0)
+		if err != nil {
+			return err
+		}
+		_, err = commander.cacheFs.WriteAt(commander.data.Cache, 0)
+		if err != nil {
+			return err
+		}
+		err = commander.cacheFs.Sync()
+		if err != nil {
+			return err
+		}
+		err = commander.cacheFs.Close()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
