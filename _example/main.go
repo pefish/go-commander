@@ -5,7 +5,7 @@ import (
 	"fmt"
 	commander2 "github.com/pefish/go-commander"
 	go_config "github.com/pefish/go-config"
-	"log"
+	go_logger "github.com/pefish/go-logger"
 	_ "net/http/pprof"
 )
 
@@ -22,11 +22,12 @@ func (t TestSubCommand) DecorateFlagSet(flagSet *flag.FlagSet) error {
 func (t TestSubCommand) Start(data *commander2.StartData) error {
 	fmt.Println("test", go_config.Config.MustGetString("test"))
 	fmt.Println("test-test", go_config.Config.MustGetString("test-test"))
+	fmt.Println(data.LogLevel)
 
 	return nil
 }
 
-func (t TestSubCommand) OnExited() error {
+func (t TestSubCommand) OnExited(data *commander2.StartData) error {
 	//fmt.Println("OnExited")
 	return nil
 }
@@ -41,7 +42,7 @@ func main() {
 	})
 	err := commander.Run()
 	if err != nil {
-		log.Fatal(err)
+		go_logger.Logger.Error(err)
 	}
 }
 

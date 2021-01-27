@@ -3,7 +3,7 @@ package commander
 import (
 	"flag"
 	"fmt"
-	"github.com/pefish/go-config"
+	go_config "github.com/pefish/go-config"
 	"github.com/pefish/go-logger"
 	"github.com/pkg/errors"
 	"io/ioutil"
@@ -72,45 +72,38 @@ func (commander *Commander) hasSubCommand() bool {
 }
 
 func (commander *Commander) Run() error {
-	var subcommand ISubcommand
 	key := "default"
 	if commander.hasSubCommand() {
 		key = os.Args[1]
 	}
-	subcommandTemp, ok := commander.subcommands[key]
-	if ok {
-		subcommand = subcommandTemp
-	} else {
+	subcommand, ok := commander.subcommands[key]
+	if !ok {
 		return errors.Errorf("subcommand error: %s", key)
 	}
 
 	flagSet := flag.NewFlagSet(commander.appName, flag.ExitOnError)
-
 	flagSet.Usage = func() {
 		fmt.Printf("\n%s\n\n", commander.appDesc)
 		fmt.Printf("Usage of %s:\n", flagSet.Name())
 		flagSet.PrintDefaults()
 		fmt.Printf("\n")
 	}
-	printVersion := flagSet.Bool("version", false, "print version string")
-	logLevel := flagSet.String("log-level", "info", "set log verbosity: debug, info, warn, or error")
+	flagSet.Bool("version", false, "print version string")
+	flagSet.String("log-level", "info", "set log verbosity: debug, info, warn, or error")
 	configFile := flagSet.String("config", os.Getenv("GO_CONFIG"), "path to config file")
 	secretFile := flagSet.String("secret-file", os.Getenv("GO_SECRET"), "path to secret file")
-	pprofEnable := flagSet.Bool("enable-pprof", false, "enable pprof")
-	pprofAddress := flagSet.String("pprof-address", "0.0.0.0:9191", "<addr>:<port> to listen on for pprof")
-	dataDir := flagSet.String("data-dir", os.ExpandEnv("$HOME/.")+commander.appName, "data dictionary")
-
+	flagSet.Bool("enable-pprof", false, "enable pprof")
+	flagSet.String("pprof-address", "0.0.0.0:9191", "<addr>:<port> to listen on for pprof")
+	flagSet.String("data-dir", os.ExpandEnv("$HOME/.")+commander.appName, "data dictionary")
 	if commander.fnToSetCommonFlags != nil {
 		commander.fnToSetCommonFlags(flagSet)
 	}
-
 	if subcommand != nil {
 		err := subcommand.DecorateFlagSet(flagSet)
 		if err != nil {
 			return errors.Wrap(err, "decorate flagSet error")
 		}
 	}
-
 	argsToParse := os.Args[1:]
 	if commander.hasSubCommand() {
 		argsToParse = os.Args[2:]
@@ -120,24 +113,7 @@ func (commander *Commander) Run() error {
 		return errors.Wrap(err, "parse flagSet error")
 	}
 
-	dataDirStr := *dataDir
-	fsStat, err := os.Stat(dataDirStr)
-	if err != nil {
-		if strings.Contains(err.Error(), "no such file or directory") || fsStat == nil || !fsStat.IsDir() {
-			err = os.Mkdir(dataDirStr, 0755)
-			if err != nil {
-				return err
-			}
-		} else {
-			return err
-		}
-	}
-
-	commander.data.DataDir = dataDirStr
-	commander.data.LogLevel = *logLevel
-	commander.data.ConfigFile = *configFile
-	commander.data.SecretFile = *secretFile
-
+	// merge envs and config file
 	err = go_config.Config.LoadConfig(go_config.Configuration{
 		ConfigFilepath: *configFile,
 		SecretFilepath: *secretFile,
@@ -152,9 +128,41 @@ func (commander *Commander) Run() error {
 		envKeyPairs[env] = k
 	}
 	go_config.Config.MergeEnvs(envKeyPairs)
-	go_logger.Logger = go_logger.NewLogger(*logLevel)
 
-	if *printVersion {
+
+	dataDirStr, err := go_config.Config.GetString("data-dir")
+	if err != nil {
+		return errors.Wrap(err, "get data-dir config error")
+	}
+	fsStat, err := os.Stat(dataDirStr)
+	if err != nil {
+		if strings.Contains(err.Error(), "no such file or directory") || fsStat == nil || !fsStat.IsDir() {
+			err = os.Mkdir(dataDirStr, 0755)
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	}
+
+	commander.data.DataDir = dataDirStr
+	logLevel, err := go_config.Config.GetString("log-level")
+	if err != nil {
+		return errors.Wrap(err, "get log-level config error")
+	}
+	commander.data.LogLevel = logLevel
+	commander.data.ConfigFile = *configFile
+	commander.data.SecretFile = *secretFile
+
+
+	go_logger.Logger = go_logger.NewLogger(logLevel)
+
+	printVersion, err := go_config.Config.GetBool("version")
+	if err != nil {
+		return errors.Wrap(err, "get version config error")
+	}
+	if printVersion {
 		fmt.Println(commander.version)
 		os.Exit(0)
 	}
@@ -163,8 +171,16 @@ func (commander *Commander) Run() error {
 		return errors.Errorf("subcommand error: %s", key)
 	}
 
-	if pprofEnable != nil && *pprofEnable {
-		pprofHttpServer := &http.Server{Addr: *pprofAddress}
+	pprofEnable, err := go_config.Config.GetBool("enable-pprof")
+	if err != nil {
+		return errors.Wrap(err, "get enable-pprof config error")
+	}
+	pprofAddress, err := go_config.Config.GetString("pprof-address")
+	if err != nil {
+		return errors.Wrap(err, "get version config error")
+	}
+	if pprofEnable {
+		pprofHttpServer := &http.Server{Addr: pprofAddress}
 		go func() { // 无需担心进程退出，不存在leak
 			go_logger.Logger.InfoF("started pprof server on %s, you can open url [http://%s/debug/pprof/] to enjoy!!", pprofHttpServer.Addr, pprofHttpServer.Addr)
 			err := pprofHttpServer.ListenAndServe()

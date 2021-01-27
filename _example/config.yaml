@@ -1,1 +1,3 @@
 test: config-file-test
+log-level: debug
+version: true
