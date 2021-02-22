@@ -203,46 +203,34 @@ func (commander *Commander) Run() error {
 		commander.data.Cache = b
 	}
 
-	waitExit := make(chan error)
+	waitErrorChan := make(chan error)
 	go func() {
-		waitExit <- subcommand.Start(commander.data)
+		waitErrorChan <- subcommand.Start(commander.data)
 	}()
 
 	exitChan := make(chan os.Signal)
 	signal.Notify(exitChan, syscall.SIGINT, syscall.SIGTERM)
+
+	var exitErr error
+
 	select {
 	case <-exitChan:
-		err := commander.onExitedBefore()
-		if err != nil {
-			go_logger.Logger.Error(errors.WithMessage(err, "commander OnExitedBefore failed"))
-		}
-		err = subcommand.OnExited(commander.data)
-		if err != nil {
-			go_logger.Logger.Error(errors.WithMessage(err, "OnExited failed"))
-		}
-		err = commander.onExitedAfter()
-		if err != nil {
-			go_logger.Logger.Error(errors.WithMessage(err, "commander OnExitedAfter failed"))
-		}
-		return nil
-	case result := <-waitExit:
-		if result != nil {
-			go_logger.Logger.Error(result)
-		}
-		err := commander.onExitedBefore()
-		if err != nil {
-			go_logger.Logger.Error(errors.WithMessage(err, "commander OnExitedBefore failed"))
-		}
-		err = subcommand.OnExited(commander.data)
-		if err != nil {
-			go_logger.Logger.Error(errors.WithMessage(err, "OnExited failed"))
-		}
-		err = commander.onExitedAfter()
-		if err != nil {
-			go_logger.Logger.Error(errors.WithMessage(err, "commander OnExitedAfter failed"))
-		}
-		return result
+	case exitErr = <-waitErrorChan:
 	}
+
+	err = commander.onExitedBefore()
+	if err != nil {
+		exitErr = errors.WithMessage(exitErr, fmt.Sprintf("commander OnExitedBefore failed - %s", err.Error()))
+	}
+	err = subcommand.OnExited(commander.data)
+	if err != nil {
+		exitErr = errors.WithMessage(exitErr, fmt.Sprintf("OnExited failed - %s", err.Error()))
+	}
+	err = commander.onExitedAfter()
+	if err != nil {
+		exitErr = errors.WithMessage(exitErr, fmt.Sprintf("commander OnExitedAfter failed - %s", err.Error()))
+	}
+	return exitErr
 }
 
 func (commander *Commander) onExitedAfter() error {
