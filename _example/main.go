@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	commander2 "github.com/pefish/go-commander"
-	go_config "github.com/pefish/go-config"
 	go_logger "github.com/pefish/go-logger"
 	_ "net/http/pprof"
 )
@@ -20,9 +19,9 @@ func (t TestSubCommand) DecorateFlagSet(flagSet *flag.FlagSet) error {
 }
 
 func (t TestSubCommand) Start(data *commander2.StartData) error {
-	fmt.Println("test", go_config.Config.MustGetString("test"))
-	fmt.Println("test-test", go_config.Config.MustGetString("test-test"))
-	fmt.Println(data.LogLevel)
+	//fmt.Println("test", go_config.Config.MustGetString("test"))
+	//fmt.Println("test-test", go_config.Config.MustGetString("test-test"))
+	fmt.Println(data.Args)
 
 	return nil
 }
@@ -35,11 +34,12 @@ func (t TestSubCommand) OnExited(data *commander2.StartData) error {
 func main() {
 	//go_logger.Logger.Error(errors.WithMessage(errors.New("123"), "ywrtsdfhs"))
 	commander := commander2.NewCommander("test", "v0.0.1", "")
-	commander.RegisterSubcommand("test", TestSubCommand{})
+	//commander.RegisterSubcommand("test", TestSubCommand{})
 	commander.RegisterDefaultSubcommand(TestSubCommand{})
-	commander.RegisterFnToSetCommonFlags(func(flagSet *flag.FlagSet) {
-		flagSet.String("test-test", "", "path to config file")
-	})
+	//commander.RegisterFnToSetCommonFlags(func(flagSet *flag.FlagSet) {
+	//	flagSet.String("test-test", "", "path to config file")
+	//})
+	commander.DisableSubCommand()
 	err := commander.Run()
 	if err != nil {
 		go_logger.Logger.Error(err)

@@ -33,6 +33,8 @@ type Commander struct {
 	data *StartData
 
 	cacheFs *os.File
+
+	subCommandValid bool
 }
 
 type StartData struct {
@@ -41,6 +43,8 @@ type StartData struct {
 	ConfigFile string
 	SecretFile string
 	Cache      []byte
+
+	Args []string
 }
 
 func NewCommander(appName, version, appDesc string) *Commander {
@@ -50,6 +54,7 @@ func NewCommander(appName, version, appDesc string) *Commander {
 		appName:     appName,
 		appDesc:     appDesc,
 		data:        new(StartData),
+		subCommandValid: true,
 	}
 }
 
@@ -67,8 +72,12 @@ func (commander *Commander) RegisterFnToSetCommonFlags(flagSet func(set *flag.Fl
 	commander.fnToSetCommonFlags = flagSet
 }
 
+func (commander *Commander) DisableSubCommand() {
+	commander.subCommandValid = false
+}
+
 func (commander *Commander) hasSubCommand() bool {
-	return len(os.Args) != 1 && !strings.HasPrefix(os.Args[1], "-")
+	return len(os.Args) != 1 && !strings.HasPrefix(os.Args[1], "-") && commander.subCommandValid
 }
 
 func (commander *Commander) Run() error {
@@ -154,6 +163,7 @@ func (commander *Commander) Run() error {
 	commander.data.LogLevel = logLevel
 	commander.data.ConfigFile = *configFile
 	commander.data.SecretFile = *secretFile
+	commander.data.Args = flagSet.Args()
 
 
 	go_logger.Logger = go_logger.NewLogger(logLevel)
