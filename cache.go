@@ -56,13 +56,13 @@ func (c *Cache) Init(filename string) error {
 	return nil
 }
 
-func (c *Cache) Load(out interface{}) error {
-	if c.data == nil {
-		return errors.New("cache must be init first")
+func (c *Cache) Load(out interface{}) (notFound bool, err error) {
+	if c.data == nil {  // 代表没有数据
+		return true, nil
 	}
-	err := json.Unmarshal(c.data, out)
+	err = json.Unmarshal(c.data, out)
 	if err != nil {
-		return err
+		return false, err
 	}
-	return nil
+	return false, nil
 }
