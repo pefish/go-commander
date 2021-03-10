@@ -6,7 +6,6 @@ import (
 	go_config "github.com/pefish/go-config"
 	"github.com/pefish/go-logger"
 	"github.com/pkg/errors"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
@@ -42,7 +41,7 @@ type StartData struct {
 	LogLevel   string
 	ConfigFile string
 	SecretFile string
-	Cache      []byte
+	Cache      Cache
 
 	Args []string
 }
@@ -201,16 +200,9 @@ func (commander *Commander) Run() error {
 	}
 
 	// load cache
-	commander.cacheFs, err = os.OpenFile(path.Join(commander.data.DataDir, "data.json"), os.O_RDWR|os.O_CREATE, 0666)
+	err = commander.data.Cache.Init(path.Join(commander.data.DataDir, "data.json"))
 	if err != nil {
 		return err
-	}
-	b, err := ioutil.ReadAll(commander.cacheFs)
-	if err != nil {
-		return err
-	}
-	if len(b) != 0 {
-		commander.data.Cache = b
 	}
 
 	waitErrorChan := make(chan error)
@@ -244,25 +236,6 @@ func (commander *Commander) Run() error {
 }
 
 func (commander *Commander) onExitedAfter() error {
-	if commander.data.Cache != nil {
-		err := commander.cacheFs.Truncate(0)
-		if err != nil {
-			return err
-		}
-		_, err = commander.cacheFs.WriteAt(commander.data.Cache, 0)
-		if err != nil {
-			return err
-		}
-		err = commander.cacheFs.Sync()
-		if err != nil {
-			return err
-		}
-		err = commander.cacheFs.Close()
-		if err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
