@@ -1,6 +1,7 @@
 package commander
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	go_config "github.com/pefish/go-config"
@@ -34,6 +35,8 @@ type Commander struct {
 	cacheFs *os.File
 
 	subCommandValid bool
+
+	cancelFuncOfExitCancelCtx  context.CancelFunc
 }
 
 type StartData struct {
@@ -44,6 +47,7 @@ type StartData struct {
 	Cache      Cache
 
 	Args []string
+	ExitCancelCtx context.Context
 }
 
 func NewCommander(appName, version, appDesc string) *Commander {
@@ -164,6 +168,9 @@ func (commander *Commander) Run() error {
 	commander.data.SecretFile = *secretFile
 	commander.data.Args = flagSet.Args()
 
+	ctx, cancel := context.WithCancel(context.Background())
+	commander.data.ExitCancelCtx = ctx
+	commander.cancelFuncOfExitCancelCtx = cancel
 
 	go_logger.Logger = go_logger.NewLogger(logLevel)
 
@@ -215,9 +222,21 @@ func (commander *Commander) Run() error {
 
 	var exitErr error
 
-	select {
-	case <-exitChan:
-	case exitErr = <-waitErrorChan:
+	ctrlCCount := 0
+forceExit:
+	for {
+		select {
+		case <-exitChan:
+			ctrlCCount++
+			// 要等待 start 函数退出
+			commander.cancelFuncOfExitCancelCtx()  // 通知下去，程序即将退出
+			go_logger.Logger.InfoF("exiting... %d", ctrlCCount)
+			if ctrlCCount >= 10 {  // Ctrl C 10 次强制退出，不等 start 函数了
+				break forceExit
+			}
+			break
+		case exitErr = <-waitErrorChan:
+		}
 	}
 
 	err = commander.onExitedBefore()
