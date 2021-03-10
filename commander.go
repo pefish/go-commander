@@ -239,6 +239,7 @@ forceExit:
 		}
 	}
 
+
 	err = commander.onExitedBefore()
 	if err != nil {
 		exitErr = errors.WithMessage(exitErr, fmt.Sprintf("commander OnExitedBefore failed - %s", err.Error()))
