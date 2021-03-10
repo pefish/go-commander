@@ -5,11 +5,13 @@ import (
 	"github.com/pkg/errors"
 	"io/ioutil"
 	"os"
+	"sync"
 )
 
 type Cache struct {
 	data []byte
 	cacheFs *os.File
+	sync.Mutex
 }
 
 func (c *Cache) Save(data interface{}) error {
@@ -24,6 +26,8 @@ func (c *Cache) Save(data interface{}) error {
 	if err != nil {
 		return err
 	}
+	c.Lock()
+	defer c.Unlock()
 	c.data = result
 	_, err = c.cacheFs.WriteAt(c.data, 0)
 	if err != nil {
@@ -51,12 +55,16 @@ func (c *Cache) Init(filename string) error {
 		return err
 	}
 	if len(b) != 0 {
+		c.Lock()
+		defer c.Unlock()
 		c.data = b
 	}
 	return nil
 }
 
 func (c *Cache) Load(out interface{}) (notFound bool, err error) {
+	c.Lock()
+	defer c.Unlock()
 	if c.data == nil {  // 代表没有数据
 		return true, nil
 	}
