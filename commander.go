@@ -222,16 +222,18 @@ func (commander *Commander) Run() error {
 
 	var exitErr error
 
-	ctrlCCount := 10
+	ctrlCCount := 5
 forceExit:
 	for {
 		select {
 		case <-exitChan:
-			ctrlCCount--
 			// 要等待 start 函数退出
-			commander.cancelFuncOfExitCancelCtx()  // 通知下去，程序即将退出
+			if ctrlCCount == 5 {
+				commander.cancelFuncOfExitCancelCtx()  // 通知下去，程序即将退出
+			}
+			ctrlCCount--
 			go_logger.Logger.InfoF("Exiting... %d", ctrlCCount)
-			if ctrlCCount <= 0 {  // Ctrl C 10 次强制退出，不等 start 函数了
+			if ctrlCCount <= 0 {  // Ctrl C n 次强制退出，不等 start 函数了
 				break forceExit
 			}
 			break
