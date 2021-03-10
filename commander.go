@@ -232,7 +232,7 @@ forceExit:
 				commander.cancelFuncOfExitCancelCtx()  // 通知下去，程序即将退出
 			}
 			ctrlCCount--
-			go_logger.Logger.InfoF("Exiting... %d", ctrlCCount)
+			go_logger.Logger.InfoF("Got interrupt, exiting... %d", ctrlCCount)
 			if ctrlCCount <= 0 {  // Ctrl C n 次强制退出，不等 start 函数了
 				break forceExit
 			}
