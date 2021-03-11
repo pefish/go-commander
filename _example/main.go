@@ -33,13 +33,14 @@ func (t TestSubCommand) OnExited(data *commander2.StartData) error {
 
 func main() {
 	//go_logger.Logger.Error(errors.WithMessage(errors.New("123"), "ywrtsdfhs"))
-	commander := commander2.NewCommander("test", "v0.0.1", "")
-	//commander.RegisterSubcommand("test", TestSubCommand{})
+	commander := commander2.NewCommander("test", "v0.0.1", "小工具")
+	//commander.RegisterSubcommand("test", "这是一个测试", TestSubCommand{})
+	//commander.RegisterSubcommand("test2", "这是一个测试", TestSubCommand{})
 	commander.RegisterDefaultSubcommand(TestSubCommand{})
 	//commander.RegisterFnToSetCommonFlags(func(flagSet *flag.FlagSet) {
 	//	flagSet.String("test-test", "", "path to config file")
 	//})
-	commander.DisableSubCommand()
+	//commander.DisableSubCommand()
 	err := commander.Run()
 	if err != nil {
 		go_logger.Logger.Error(err)

@@ -23,8 +23,13 @@ type ISubcommand interface {
 	OnExited(data *StartData) error
 }
 
+type SubcommandInfo struct{
+	desc string
+	subcommand ISubcommand
+}
+
 type Commander struct {
-	subcommands        map[string]ISubcommand
+	subcommands        map[string]*SubcommandInfo
 	version            string
 	appName            string
 	appDesc            string
@@ -52,7 +57,7 @@ type StartData struct {
 
 func NewCommander(appName, version, appDesc string) *Commander {
 	return &Commander{
-		subcommands: make(map[string]ISubcommand),
+		subcommands: make(map[string]*SubcommandInfo),
 		version:     version,
 		appName:     appName,
 		appDesc:     appDesc,
@@ -61,13 +66,19 @@ func NewCommander(appName, version, appDesc string) *Commander {
 	}
 }
 
-func (commander *Commander) RegisterSubcommand(name string, subcommand ISubcommand) {
-	commander.subcommands[name] = subcommand
+func (commander *Commander) RegisterSubcommand(name string, desc string, subcommand ISubcommand) {
+	commander.subcommands[name] = &SubcommandInfo{
+		desc:       desc,
+		subcommand: subcommand,
+	}
 }
 
 // 没有指定子命令的时候，会执行这里注册的子命令
 func (commander *Commander) RegisterDefaultSubcommand(subcommand ISubcommand) {
-	commander.subcommands["default"] = subcommand
+	commander.subcommands["default"] = &SubcommandInfo{
+		desc:       "",
+		subcommand: subcommand,
+	}
 }
 
 // 用于设置所有子命令共用的选项
@@ -88,15 +99,34 @@ func (commander *Commander) Run() error {
 	if commander.hasSubCommand() {
 		key = os.Args[1]
 	}
-	subcommand, ok := commander.subcommands[key]
+	subcommandInfo, ok := commander.subcommands[key]
 	if !ok {
 		return errors.Errorf("subcommand error: %s", key)
 	}
 
 	flagSet := flag.NewFlagSet(commander.appName, flag.ExitOnError)
 	flagSet.Usage = func() {
+
 		fmt.Printf("\n%s\n\n", commander.appDesc)
-		fmt.Printf("Usage of %s:\n", flagSet.Name())
+
+		fmt.Printf("Usage of <%s>:\n", flagSet.Name())
+		fmt.Printf("  %s [subcommand] [options] [args]\n\n", flagSet.Name())
+
+		// 如果有子命令，打印所有子命令
+		if commander.subCommandValid {
+			if _, ok := commander.subcommands["default"]; ok {
+				delete(commander.subcommands, "default")
+			}
+			if len(commander.subcommands) > 0 {
+				fmt.Println("Commands:")
+				for name, info := range commander.subcommands {
+					fmt.Printf("  %s\t%s\n", name, info.desc)
+				}
+				fmt.Printf("\n")
+			}
+		}
+
+		fmt.Println("Options:")
 		flagSet.PrintDefaults()
 		fmt.Printf("\n")
 	}
@@ -110,8 +140,8 @@ func (commander *Commander) Run() error {
 	if commander.fnToSetCommonFlags != nil {
 		commander.fnToSetCommonFlags(flagSet)
 	}
-	if subcommand != nil {
-		err := subcommand.DecorateFlagSet(flagSet)
+	if subcommandInfo != nil {
+		err := subcommandInfo.subcommand.DecorateFlagSet(flagSet)
 		if err != nil {
 			return errors.Wrap(err, "decorate flagSet error")
 		}
@@ -183,7 +213,7 @@ func (commander *Commander) Run() error {
 		os.Exit(0)
 	}
 
-	if subcommand == nil {
+	if subcommandInfo == nil {
 		return errors.Errorf("subcommand error: %s", key)
 	}
 
@@ -214,7 +244,7 @@ func (commander *Commander) Run() error {
 
 	waitErrorChan := make(chan error)
 	go func() {
-		waitErrorChan <- subcommand.Start(commander.data)
+		waitErrorChan <- subcommandInfo.subcommand.Start(commander.data)
 	}()
 
 	exitChan := make(chan os.Signal)
@@ -247,7 +277,7 @@ forceExit:
 	if err != nil {
 		exitErr = errors.WithMessage(exitErr, fmt.Sprintf("commander OnExitedBefore failed - %s", err.Error()))
 	}
-	err = subcommand.OnExited(commander.data)
+	err = subcommandInfo.subcommand.OnExited(commander.data)
 	if err != nil {
 		exitErr = errors.WithMessage(exitErr, fmt.Sprintf("OnExited failed - %s", err.Error()))
 	}
