@@ -156,23 +156,23 @@ func (commander *Commander) Run() error {
 	}
 
 	// merge envs and config file
-	err = go_config.Config.LoadConfig(go_config.Configuration{
+	err = go_config.ConfigManagerInstance.LoadConfig(go_config.Configuration{
 		ConfigFilepath: *configFile,
 		SecretFilepath: *secretFile,
 	})
 	if err != nil {
 		return errors.Errorf("load config file error - %s", err)
 	}
-	go_config.Config.MergeFlagSet(flagSet)
+	go_config.ConfigManagerInstance.MergeFlagSet(flagSet)
 	envKeyPairs := make(map[string]string, 5)
-	for k, _ := range go_config.Config.Configs() {
+	for k, _ := range go_config.ConfigManagerInstance.Configs() {
 		env := strings.ReplaceAll(strings.ToUpper(k), "-", "_")
 		envKeyPairs[env] = k
 	}
-	go_config.Config.MergeEnvs(envKeyPairs)
+	go_config.ConfigManagerInstance.MergeEnvs(envKeyPairs)
 
 
-	dataDirStr, err := go_config.Config.GetString("data-dir")
+	dataDirStr, err := go_config.ConfigManagerInstance.GetString("data-dir")
 	if err != nil {
 		return errors.Wrap(err, "get data-dir config error")
 	}
@@ -189,7 +189,7 @@ func (commander *Commander) Run() error {
 	}
 
 	commander.data.DataDir = dataDirStr
-	logLevel, err := go_config.Config.GetString("log-level")
+	logLevel, err := go_config.ConfigManagerInstance.GetString("log-level")
 	if err != nil {
 		return errors.Wrap(err, "get log-level config error")
 	}
@@ -204,7 +204,7 @@ func (commander *Commander) Run() error {
 
 	go_logger.Logger = go_logger.NewLogger(logLevel)
 
-	printVersion, err := go_config.Config.GetBool("version")
+	printVersion, err := go_config.ConfigManagerInstance.GetBool("version")
 	if err != nil {
 		return errors.Wrap(err, "get version config error")
 	}
@@ -217,11 +217,11 @@ func (commander *Commander) Run() error {
 		return errors.Errorf("subcommand error: %s", key)
 	}
 
-	pprofEnable, err := go_config.Config.GetBool("enable-pprof")
+	pprofEnable, err := go_config.ConfigManagerInstance.GetBool("enable-pprof")
 	if err != nil {
 		return errors.Wrap(err, "get enable-pprof config error")
 	}
-	pprofAddress, err := go_config.Config.GetString("pprof-address")
+	pprofAddress, err := go_config.ConfigManagerInstance.GetString("pprof-address")
 	if err != nil {
 		return errors.Wrap(err, "get version config error")
 	}
