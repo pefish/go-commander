@@ -74,9 +74,9 @@ func (commander *Commander) RegisterSubcommand(name string, desc string, subcomm
 }
 
 // 没有指定子命令的时候，会执行这里注册的子命令
-func (commander *Commander) RegisterDefaultSubcommand(subcommand ISubcommand) {
+func (commander *Commander) RegisterDefaultSubcommand(desc string, subcommand ISubcommand) {
 	commander.subcommands["default"] = &SubcommandInfo{
-		desc:       "",
+		desc:       desc,
 		subcommand: subcommand,
 	}
 }
@@ -114,13 +114,14 @@ func (commander *Commander) Run() error {
 
 		// 如果有子命令，打印所有子命令
 		if commander.subCommandValid {
-			if _, ok := commander.subcommands["default"]; ok {
-				delete(commander.subcommands, "default")
-			}
 			if len(commander.subcommands) > 0 {
 				fmt.Println("Commands:")
 				for name, info := range commander.subcommands {
-					fmt.Printf("  %s\t%s\n", name, info.desc)
+					if name == "default" {
+						fmt.Printf("  [default]\tdefault subcommand. %s\n", info.desc)
+					} else {
+						fmt.Printf("  %s\t%s\n", name, info.desc)
+					}
 				}
 				fmt.Printf("\n")
 			}
