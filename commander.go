@@ -253,7 +253,7 @@ func (commander *Commander) Run() error {
 
 	var exitErr error
 
-	ctrlCCount := 5
+	ctrlCCount := 3
 forceExit:
 	for {
 		select {
