@@ -101,7 +101,7 @@ func (commander *Commander) Run() error {
 	}
 	subcommandInfo, ok := commander.subcommands[key]
 	if !ok {
-		return errors.Errorf("subcommand %s not found!", key)
+		return errors.Errorf("subcommand <%s> not found!", key)
 	}
 
 	flagSet := flag.NewFlagSet(commander.appName, flag.ExitOnError)
