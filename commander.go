@@ -262,9 +262,11 @@ forceExit:
 			// 要等待 start 函数退出
 			if ctrlCCountTemp == ctrlCCount {
 				commander.cancelFuncOfExitCancelCtx()  // 通知下去，程序即将退出
+				go_logger.Logger.Info("Got interrupt, exiting...")
+			} else {
+				go_logger.Logger.InfoF("Got interrupt, exiting... %d", ctrlCCountTemp)
 			}
 			ctrlCCountTemp--
-			go_logger.Logger.InfoF("Got interrupt, exiting... %d", ctrlCCountTemp)
 			if ctrlCCountTemp <= 0 {  // Ctrl C n 次强制退出，不等 start 函数了
 				break forceExit
 			}
