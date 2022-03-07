@@ -96,12 +96,14 @@ func (commander *Commander) hasSubCommand() bool {
 
 func (commander *Commander) Run() error {
 	key := "default"
+	var subcommandInfo *SubcommandInfo
 	if commander.hasSubCommand() {
 		key = os.Args[1]
-	}
-	subcommandInfo, ok := commander.subcommands[key]
-	if !ok {
-		return errors.Errorf("subcommand <%s> not found!", key)
+		subcommandInfo1, ok := commander.subcommands[key]
+		if !ok {
+			return errors.Errorf("subcommand <%s> not found!", key)
+		}
+		subcommandInfo = subcommandInfo1
 	}
 
 	flagSet := flag.NewFlagSet(commander.appName, flag.ExitOnError)
@@ -215,7 +217,7 @@ func (commander *Commander) Run() error {
 	}
 
 	if subcommandInfo == nil {
-		return errors.Errorf("subcommand error: %s", key)
+		return errors.Errorf("subcommand error: %s subcommand not found", key)
 	}
 
 	pprofEnable, err := go_config.ConfigManagerInstance.GetBool("enable-pprof")
