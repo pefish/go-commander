@@ -96,7 +96,7 @@ func (commander *Commander) hasSubCommand() bool {
 
 func (commander *Commander) Run() error {
 	key := "default"
-	var subcommandInfo *SubcommandInfo
+	subcommandInfo := commander.subcommands[key]
 	if commander.hasSubCommand() {
 		key = os.Args[1]
 		subcommandInfo1, ok := commander.subcommands[key]
