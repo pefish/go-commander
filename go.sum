@@ -19,6 +19,8 @@ github.com/pefish/go-config v0.2.2/go.mod h1:HrlPD1p347MMdcXOOCqJLwkq9gD1d9YIk+Q
 github.com/pefish/go-error v1.0.3/go.mod h1:OLnjLGHgKqEZSsSwKdx6QDBH9o9mqVCMTBroRuUZQDc=
 github.com/pefish/go-logger v0.4.14 h1:tdLcTMClYhHFaCWRa2KP8EefrZ15wXNwAzffEt/ebY0=
 github.com/pefish/go-logger v0.4.14/go.mod h1:N2S6ZFg70PyjD2piBtGCVCPH4qftR+aCCpN0ZW/arfc=
+github.com/pefish/go-logger v0.4.15 h1:h6MIeV9SfmJtdiWyjo3tR05dber1Hy7ymli02wcaO/E=
+github.com/pefish/go-logger v0.4.15/go.mod h1:N2S6ZFg70PyjD2piBtGCVCPH4qftR+aCCpN0ZW/arfc=
 github.com/pefish/go-reflect v0.2.1 h1:RJs94iRBhGAUXKznI5042FhsSgF3ytHy/qeDLAV+xuM=
 github.com/pefish/go-reflect v0.2.1/go.mod h1:J1PmxXVMl+IqyzuL1OndaKqZjkvfKLaZA9LpUCUB99c=
 github.com/pefish/go-test-assert v0.0.1 h1:zWV2Hnn/Rtjf+bEOlyB8qF9ThJb7gmXpRPWEqJtjzjg=
