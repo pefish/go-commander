@@ -23,8 +23,8 @@ type ISubcommand interface {
 	OnExited(data *StartData) error
 }
 
-type SubcommandInfo struct{
-	desc string
+type SubcommandInfo struct {
+	desc       string
 	subcommand ISubcommand
 }
 
@@ -41,7 +41,7 @@ type Commander struct {
 
 	subCommandValid bool
 
-	cancelFuncOfExitCancelCtx  context.CancelFunc
+	cancelFuncOfExitCancelCtx context.CancelFunc
 }
 
 type StartData struct {
@@ -51,17 +51,17 @@ type StartData struct {
 	SecretFile string
 	Cache      Cache
 
-	Args []string
+	Args          []string
 	ExitCancelCtx context.Context
 }
 
 func NewCommander(appName, version, appDesc string) *Commander {
 	return &Commander{
-		subcommands: make(map[string]*SubcommandInfo),
-		version:     version,
-		appName:     appName,
-		appDesc:     appDesc,
-		data:        new(StartData),
+		subcommands:     make(map[string]*SubcommandInfo),
+		version:         version,
+		appName:         appName,
+		appDesc:         appDesc,
+		data:            new(StartData),
 		subCommandValid: true,
 	}
 }
@@ -174,6 +174,19 @@ func (commander *Commander) Run() error {
 	}
 	go_config.ConfigManagerInstance.MergeEnvs(envKeyPairs)
 
+	logLevel, err := go_config.ConfigManagerInstance.GetString("log-level")
+	if err != nil {
+		return errors.Wrap(err, "get log-level config error")
+	}
+	commander.data.LogLevel = logLevel
+	go_logger.Logger = go_logger.NewLogger(logLevel)
+
+	commander.data.ConfigFile = *configFile
+	commander.data.SecretFile = *secretFile
+	commander.data.Args = flagSet.Args()
+	ctx, cancel := context.WithCancel(context.Background())
+	commander.data.ExitCancelCtx = ctx
+	commander.cancelFuncOfExitCancelCtx = cancel
 
 	dataDirStr, err := go_config.ConfigManagerInstance.GetString("data-dir")
 	if err != nil {
@@ -186,26 +199,12 @@ func (commander *Commander) Run() error {
 			if err != nil {
 				return err
 			}
+			go_logger.Logger.DebugF("%s created", dataDirStr)
 		} else {
 			return err
 		}
 	}
-
 	commander.data.DataDir = dataDirStr
-	logLevel, err := go_config.ConfigManagerInstance.GetString("log-level")
-	if err != nil {
-		return errors.Wrap(err, "get log-level config error")
-	}
-	commander.data.LogLevel = logLevel
-	commander.data.ConfigFile = *configFile
-	commander.data.SecretFile = *secretFile
-	commander.data.Args = flagSet.Args()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	commander.data.ExitCancelCtx = ctx
-	commander.cancelFuncOfExitCancelCtx = cancel
-
-	go_logger.Logger = go_logger.NewLogger(logLevel)
 
 	printVersion, err := go_config.ConfigManagerInstance.GetBool("version")
 	if err != nil {
@@ -263,13 +262,13 @@ forceExit:
 		case <-exitChan:
 			// 要等待 start 函数退出
 			if ctrlCCountTemp == ctrlCCount {
-				commander.cancelFuncOfExitCancelCtx()  // 通知下去，程序即将退出
+				commander.cancelFuncOfExitCancelCtx() // 通知下去，程序即将退出
 				go_logger.Logger.Info("Got interrupt, exiting...")
 			} else {
 				go_logger.Logger.InfoF("Got interrupt, exiting... %d", ctrlCCountTemp)
 			}
 			ctrlCCountTemp--
-			if ctrlCCountTemp <= 0 {  // Ctrl C n 次强制退出，不等 start 函数了
+			if ctrlCCountTemp <= 0 { // Ctrl C n 次强制退出，不等 start 函数了
 				break forceExit
 			}
 			break
@@ -277,7 +276,6 @@ forceExit:
 			break forceExit
 		}
 	}
-
 
 	err = commander.onExitedBefore()
 	if err != nil {
