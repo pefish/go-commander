@@ -17,9 +17,8 @@ import (
 
 type ISubcommand interface {
 	DecorateFlagSet(flagSet *flag.FlagSet) error
-	// 启动子命令
+	Init(data *StartData) error
 	Start(data *StartData) error
-	// 用于优雅退出
 	OnExited(data *StartData) error
 }
 
@@ -240,6 +239,11 @@ func (commander *Commander) Run() error {
 
 	// load cache
 	err = commander.data.Cache.Init(path.Join(commander.data.DataDir, "data.json"))
+	if err != nil {
+		return err
+	}
+
+	err = subcommandInfo.subcommand.Init(commander.data)
 	if err != nil {
 		return err
 	}

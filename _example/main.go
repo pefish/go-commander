@@ -8,13 +8,19 @@ import (
 	_ "net/http/pprof"
 )
 
-
 type TestSubCommand struct {
-
 }
 
 func (t TestSubCommand) DecorateFlagSet(flagSet *flag.FlagSet) error {
 	flagSet.String("test", "default-flag-test", "")
+	return nil
+}
+
+func (t TestSubCommand) Init(data *commander2.StartData) error {
+	//fmt.Println("test", go_config.Config.MustGetString("test"))
+	//fmt.Println("test-test", go_config.Config.MustGetString("test-test"))
+	fmt.Println(data.Args)
+
 	return nil
 }
 
@@ -51,7 +57,6 @@ func main() {
 // Output:
 // test cmd-test
 // test-test cmd-test-test
-
 
 // go run ./_example/main.go -test-test=cmd-test-test
 // Output:
