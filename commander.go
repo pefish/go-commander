@@ -23,8 +23,9 @@ type ISubcommand interface {
 }
 
 type SubcommandInfo struct {
-	desc       string
-	subcommand ISubcommand
+	Desc       string
+	Args       []string
+	Subcommand ISubcommand
 }
 
 type Commander struct {
@@ -47,37 +48,32 @@ type StartData struct {
 	DataDir    string
 	LogLevel   string
 	ConfigFile string
-	SecretFile string
 	Cache      Cache
 
-	Args          []string
+	Args          map[string]string
 	ExitCancelCtx context.Context
 }
 
 func NewCommander(appName, version, appDesc string) *Commander {
 	return &Commander{
-		subcommands:     make(map[string]*SubcommandInfo),
-		version:         version,
-		appName:         appName,
-		appDesc:         appDesc,
-		data:            new(StartData),
+		subcommands: make(map[string]*SubcommandInfo),
+		version:     version,
+		appName:     appName,
+		appDesc:     appDesc,
+		data: &StartData{
+			Args: make(map[string]string, 0),
+		},
 		subCommandValid: true,
 	}
 }
 
-func (commander *Commander) RegisterSubcommand(name string, desc string, subcommand ISubcommand) {
-	commander.subcommands[name] = &SubcommandInfo{
-		desc:       desc,
-		subcommand: subcommand,
-	}
+func (commander *Commander) RegisterSubcommand(name string, subcommandInfo *SubcommandInfo) {
+	commander.subcommands[name] = subcommandInfo
 }
 
 // 没有指定子命令的时候，会执行这里注册的子命令
-func (commander *Commander) RegisterDefaultSubcommand(desc string, subcommand ISubcommand) {
-	commander.subcommands["default"] = &SubcommandInfo{
-		desc:       desc,
-		subcommand: subcommand,
-	}
+func (commander *Commander) RegisterDefaultSubcommand(subcommandInfo *SubcommandInfo) {
+	commander.subcommands["default"] = subcommandInfo
 }
 
 // 用于设置所有子命令共用的选项
@@ -111,17 +107,32 @@ func (commander *Commander) Run() error {
 		fmt.Printf("\n%s\n\n", commander.appDesc)
 
 		fmt.Printf("Usage of <%s>:\n", flagSet.Name())
-		fmt.Printf("  %s [subcommand] [options] [args]\n\n", flagSet.Name())
+		usageStr := fmt.Sprintf("  %s", flagSet.Name())
+		if commander.subCommandValid {
+			usageStr += " [subcommand]"
+		}
+		usageStr += " [options]"
+		if !commander.subCommandValid && len(commander.subcommands["default"].Args) > 0 {
+			for _, arg := range commander.subcommands["default"].Args {
+				usageStr += fmt.Sprintf(" <%s>", arg)
+			}
+		}
+		fmt.Printf("%s\n\n", usageStr)
 
 		// 如果有子命令，打印所有子命令
 		if commander.subCommandValid {
 			if len(commander.subcommands) > 0 {
 				fmt.Println("Commands:")
 				for name, info := range commander.subcommands {
+					argsStrArr := make([]string, len(info.Args))
+					for i, arg := range info.Args {
+						argsStrArr[i] = fmt.Sprintf("<%s>", arg)
+					}
+					argsStr := strings.Join(argsStrArr, " ")
 					if name == "default" {
-						fmt.Printf("  [default]\tdefault subcommand. %s\n", info.desc)
+						fmt.Printf("  [default] %s\tDefault subcommand. %s\n", argsStr, info.Desc)
 					} else {
-						fmt.Printf("  %s\t%s\n", name, info.desc)
+						fmt.Printf("  %s %s\t%s\n", name, argsStr, info.Desc)
 					}
 				}
 				fmt.Printf("\n")
@@ -135,7 +146,6 @@ func (commander *Commander) Run() error {
 	flagSet.Bool("version", false, "print version string")
 	flagSet.String("log-level", "info", "set log verbosity: debug, info, warn, or error")
 	configFile := flagSet.String("config", os.Getenv("GO_CONFIG"), "path to config file")
-	secretFile := flagSet.String("secret-file", os.Getenv("GO_SECRET"), "path to secret file")
 	flagSet.Bool("enable-pprof", false, "enable pprof")
 	flagSet.String("pprof-address", "0.0.0.0:9191", "<addr>:<port> to listen on for pprof")
 	flagSet.String("data-dir", os.ExpandEnv("$HOME/.")+commander.appName, "data dictionary")
@@ -143,7 +153,7 @@ func (commander *Commander) Run() error {
 		commander.fnToSetCommonFlags(flagSet)
 	}
 	if subcommandInfo != nil {
-		err := subcommandInfo.subcommand.DecorateFlagSet(flagSet)
+		err := subcommandInfo.Subcommand.DecorateFlagSet(flagSet)
 		if err != nil {
 			return errors.Wrap(err, "decorate flagSet error")
 		}
@@ -160,7 +170,6 @@ func (commander *Commander) Run() error {
 	// merge envs and config file
 	err = go_config.ConfigManagerInstance.LoadConfig(go_config.Configuration{
 		ConfigFilepath: *configFile,
-		SecretFilepath: *secretFile,
 	})
 	if err != nil {
 		return errors.Errorf("load config file error - %s", err)
@@ -181,8 +190,12 @@ func (commander *Commander) Run() error {
 	go_logger.Logger = go_logger.NewLogger(logLevel)
 
 	commander.data.ConfigFile = *configFile
-	commander.data.SecretFile = *secretFile
-	commander.data.Args = flagSet.Args()
+	for i, arg := range subcommandInfo.Args {
+		if i > len(flagSet.Args())-1 {
+			return errors.Errorf("arg <%s> not be set", arg)
+		}
+		commander.data.Args[arg] = flagSet.Args()[i]
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	commander.data.ExitCancelCtx = ctx
 	commander.cancelFuncOfExitCancelCtx = cancel
@@ -243,14 +256,14 @@ func (commander *Commander) Run() error {
 		return err
 	}
 
-	err = subcommandInfo.subcommand.Init(commander.data)
+	err = subcommandInfo.Subcommand.Init(commander.data)
 	if err != nil {
 		return err
 	}
 
 	waitErrorChan := make(chan error)
 	go func() {
-		waitErrorChan <- subcommandInfo.subcommand.Start(commander.data)
+		waitErrorChan <- subcommandInfo.Subcommand.Start(commander.data)
 	}()
 
 	exitChan := make(chan os.Signal)
@@ -285,7 +298,7 @@ forceExit:
 	if err != nil {
 		exitErr = errors.WithMessage(exitErr, fmt.Sprintf("commander OnExitedBefore failed - %s", err.Error()))
 	}
-	err = subcommandInfo.subcommand.OnExited(commander.data)
+	err = subcommandInfo.Subcommand.OnExited(commander.data)
 	if err != nil {
 		exitErr = errors.WithMessage(exitErr, fmt.Sprintf("OnExited failed - %s", err.Error()))
 	}
