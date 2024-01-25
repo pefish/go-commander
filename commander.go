@@ -39,8 +39,6 @@ type Commander struct {
 
 	subCommandValid bool
 
-	cancelFunc context.CancelFunc
-
 	Name       string
 	DataDir    string
 	LogLevel   string
@@ -48,6 +46,7 @@ type Commander struct {
 	Cache      Cache
 	Args       map[string]string
 	Ctx        context.Context
+	CancelFunc context.CancelFunc
 }
 
 func NewCommander(appName, version, appDesc string) *Commander {
@@ -195,7 +194,7 @@ func (commander *Commander) Run() error {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	commander.Ctx = ctx
-	commander.cancelFunc = cancel
+	commander.CancelFunc = cancel
 
 	dataDirStr, err := go_config.ConfigManagerInstance.String("data-dir")
 	if err != nil {
@@ -276,7 +275,7 @@ forceExit:
 		case <-exitChan:
 			// 要等待 start 函数退出
 			if ctrlCCountTemp == ctrlCCount {
-				commander.cancelFunc() // 通知下去，程序即将退出
+				commander.CancelFunc() // 通知下去，程序即将退出
 				go_logger.Logger.Info("Got interrupt, exiting...")
 			} else {
 				go_logger.Logger.InfoF("Got interrupt, exiting... %d", ctrlCCountTemp)
