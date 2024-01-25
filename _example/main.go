@@ -16,16 +16,16 @@ func (t TestSubCommand) DecorateFlagSet(flagSet *flag.FlagSet) error {
 	return nil
 }
 
-func (t TestSubCommand) Init(data *commander2.StartData) error {
+func (t TestSubCommand) Init(command *commander2.Commander) error {
 	return nil
 }
 
-func (t TestSubCommand) Start(data *commander2.StartData) error {
-	go_logger.Logger.InfoFRaw("test: %s, args: %#v", go_config.ConfigManagerInstance.MustGetString("test"), data.Args)
+func (t TestSubCommand) Start(command *commander2.Commander) error {
+	go_logger.Logger.InfoFRaw("command: %s, test param: %s, args: %#v", command.Name, go_config.ConfigManagerInstance.MustString("test"), command.Args)
 	return nil
 }
 
-func (t TestSubCommand) OnExited(data *commander2.StartData) error {
+func (t TestSubCommand) OnExited(data *commander2.Commander) error {
 	//fmt.Println("OnExited")
 	return nil
 }
@@ -58,3 +58,6 @@ func main() {
 		go_logger.Logger.ErrorFRaw("%s", err.Error())
 	}
 }
+
+// go run ./_example test2 -- 1.txt 2.txt
+// go run ./_example -- 1.txt

@@ -17,9 +17,9 @@ import (
 
 type ISubcommand interface {
 	DecorateFlagSet(flagSet *flag.FlagSet) error
-	Init(data *StartData) error
-	Start(data *StartData) error
-	OnExited(data *StartData) error
+	Init(data *Commander) error
+	Start(data *Commander) error
+	OnExited(data *Commander) error
 }
 
 type SubcommandInfo struct {
@@ -35,34 +35,28 @@ type Commander struct {
 	appDesc            string
 	fnToSetCommonFlags func(flagSet *flag.FlagSet)
 
-	data *StartData
-
 	cacheFs *os.File
 
 	subCommandValid bool
 
-	cancelFuncOfExitCancelCtx context.CancelFunc
-}
+	cancelFunc context.CancelFunc
 
-type StartData struct {
+	Name       string
 	DataDir    string
 	LogLevel   string
 	ConfigFile string
 	Cache      Cache
-
-	Args          map[string]string
-	ExitCancelCtx context.Context
+	Args       map[string]string
+	Ctx        context.Context
 }
 
 func NewCommander(appName, version, appDesc string) *Commander {
 	return &Commander{
-		subcommands: make(map[string]*SubcommandInfo),
-		version:     version,
-		appName:     appName,
-		appDesc:     appDesc,
-		data: &StartData{
-			Args: make(map[string]string, 0),
-		},
+		subcommands:     make(map[string]*SubcommandInfo),
+		version:         version,
+		appName:         appName,
+		appDesc:         appDesc,
+		Args:            make(map[string]string),
 		subCommandValid: true,
 	}
 }
@@ -85,20 +79,19 @@ func (commander *Commander) DisableSubCommand() {
 	commander.subCommandValid = false
 }
 
-func (commander *Commander) hasSubCommand() bool {
-	return len(os.Args) != 1 && !strings.HasPrefix(os.Args[1], "-") && commander.subCommandValid
-}
-
 func (commander *Commander) Run() error {
-	key := "default"
-	subcommandInfo := commander.subcommands[key]
-	if commander.hasSubCommand() {
-		key = os.Args[1]
-		subcommandInfo1, ok := commander.subcommands[key]
-		if !ok {
-			return errors.Errorf("subcommand <%s> not found!", key)
+	commander.Name = "default"
+	subcommandInfo := commander.subcommands[commander.Name]
+	if len(os.Args) > 1 && !strings.HasPrefix(os.Args[1], "-") {
+		if !commander.subCommandValid {
+			return errors.Errorf("Subcommand is banned!")
 		}
-		subcommandInfo = subcommandInfo1
+		commander.Name = os.Args[1]
+		subcommandInfo_, ok := commander.subcommands[commander.Name]
+		if !ok {
+			return errors.Errorf("Subcommand <%s> not found!", commander.Name)
+		}
+		subcommandInfo = subcommandInfo_
 	}
 
 	flagSet := flag.NewFlagSet(commander.appName, flag.ExitOnError)
@@ -155,20 +148,12 @@ func (commander *Commander) Run() error {
 	if subcommandInfo != nil {
 		err := subcommandInfo.Subcommand.DecorateFlagSet(flagSet)
 		if err != nil {
-			return errors.Wrap(err, "decorate flagSet error")
+			return errors.Wrap(err, "Decorate flagSet error.")
 		}
-	}
-	argsToParse := os.Args[1:]
-	if commander.hasSubCommand() {
-		argsToParse = os.Args[2:]
-	}
-	err := flagSet.Parse(argsToParse)
-	if err != nil {
-		return errors.Wrap(err, "parse flagSet error")
 	}
 
 	// merge envs and config file
-	err = go_config.ConfigManagerInstance.LoadConfig(go_config.Configuration{
+	err := go_config.ConfigManagerInstance.LoadConfig(go_config.Configuration{
 		ConfigFilepath: *configFile,
 	})
 	if err != nil {
@@ -182,27 +167,39 @@ func (commander *Commander) Run() error {
 	}
 	go_config.ConfigManagerInstance.MergeEnvs(envKeyPairs)
 
-	logLevel, err := go_config.ConfigManagerInstance.GetString("log-level")
+	logLevel, err := go_config.ConfigManagerInstance.String("log-level")
 	if err != nil {
-		return errors.Wrap(err, "get log-level config error")
+		return errors.Wrap(err, "Get log-level config error.")
 	}
-	commander.data.LogLevel = logLevel
+	commander.LogLevel = logLevel
 	go_logger.Logger = go_logger.NewLogger(logLevel)
 
-	commander.data.ConfigFile = *configFile
-	for i, arg := range subcommandInfo.Args {
-		if i > len(flagSet.Args())-1 {
-			return errors.Errorf("arg <%s> not be set", arg)
+	commander.ConfigFile = *configFile
+
+	args := make([]string, 0)
+	argsStartIndex := len(os.Args) - 1
+	for i, a := range os.Args {
+		if a == "--" {
+			argsStartIndex = i
+			continue
 		}
-		commander.data.Args[arg] = flagSet.Args()[i]
+		if i > argsStartIndex {
+			args = append(args, a)
+		}
+	}
+	for i, arg := range subcommandInfo.Args {
+		if i > len(args)-1 {
+			return errors.Errorf("Arg <%s> not be set.", arg)
+		}
+		commander.Args[arg] = args[i]
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	commander.data.ExitCancelCtx = ctx
-	commander.cancelFuncOfExitCancelCtx = cancel
+	commander.Ctx = ctx
+	commander.cancelFunc = cancel
 
-	dataDirStr, err := go_config.ConfigManagerInstance.GetString("data-dir")
+	dataDirStr, err := go_config.ConfigManagerInstance.String("data-dir")
 	if err != nil {
-		return errors.Wrap(err, "get data-dir config error")
+		return errors.Wrap(err, "Get data-dir config error.")
 	}
 	fsStat, err := os.Stat(dataDirStr)
 	if err != nil {
@@ -216,11 +213,11 @@ func (commander *Commander) Run() error {
 			return err
 		}
 	}
-	commander.data.DataDir = dataDirStr
+	commander.DataDir = dataDirStr
 
-	printVersion, err := go_config.ConfigManagerInstance.GetBool("version")
+	printVersion, err := go_config.ConfigManagerInstance.Bool("version")
 	if err != nil {
-		return errors.Wrap(err, "get version config error")
+		return errors.Wrap(err, "Get version config error.")
 	}
 	if printVersion {
 		fmt.Println(commander.version)
@@ -228,42 +225,42 @@ func (commander *Commander) Run() error {
 	}
 
 	if subcommandInfo == nil {
-		return errors.Errorf("subcommand error: %s subcommand not found", key)
+		return errors.Errorf("Subcommand error: %s subcommand not found.", commander.Name)
 	}
 
-	pprofEnable, err := go_config.ConfigManagerInstance.GetBool("enable-pprof")
+	pprofEnable, err := go_config.ConfigManagerInstance.Bool("enable-pprof")
 	if err != nil {
-		return errors.Wrap(err, "get enable-pprof config error")
+		return errors.Wrap(err, "Get enable-pprof config error.")
 	}
-	pprofAddress, err := go_config.ConfigManagerInstance.GetString("pprof-address")
+	pprofAddress, err := go_config.ConfigManagerInstance.String("pprof-address")
 	if err != nil {
-		return errors.Wrap(err, "get version config error")
+		return errors.Wrap(err, "Get version config error.")
 	}
 	if pprofEnable {
 		pprofHttpServer := &http.Server{Addr: pprofAddress}
 		go func() { // 无需担心进程退出，不存在leak
-			go_logger.Logger.InfoF("started pprof server on %s, you can open url [http://%s/debug/pprof/] to enjoy!!", pprofHttpServer.Addr, pprofHttpServer.Addr)
+			go_logger.Logger.InfoF("Started pprof server on %s, you can open url [http://%s/debug/pprof/] to enjoy!!", pprofHttpServer.Addr, pprofHttpServer.Addr)
 			err := pprofHttpServer.ListenAndServe()
 			if err != nil {
-				go_logger.Logger.WarnF("pprof server start error - %s", err)
+				go_logger.Logger.WarnF("Pprof server start error - %s", err)
 			}
 		}()
 	}
 
 	// load cache
-	err = commander.data.Cache.Init(path.Join(commander.data.DataDir, "data.json"))
+	err = commander.Cache.Init(path.Join(commander.DataDir, "data.json"))
 	if err != nil {
 		return err
 	}
 
-	err = subcommandInfo.Subcommand.Init(commander.data)
+	err = subcommandInfo.Subcommand.Init(commander)
 	if err != nil {
 		return err
 	}
 
 	waitErrorChan := make(chan error)
 	go func() {
-		waitErrorChan <- subcommandInfo.Subcommand.Start(commander.data)
+		waitErrorChan <- subcommandInfo.Subcommand.Start(commander)
 	}()
 
 	exitChan := make(chan os.Signal)
@@ -279,7 +276,7 @@ forceExit:
 		case <-exitChan:
 			// 要等待 start 函数退出
 			if ctrlCCountTemp == ctrlCCount {
-				commander.cancelFuncOfExitCancelCtx() // 通知下去，程序即将退出
+				commander.cancelFunc() // 通知下去，程序即将退出
 				go_logger.Logger.Info("Got interrupt, exiting...")
 			} else {
 				go_logger.Logger.InfoF("Got interrupt, exiting... %d", ctrlCCountTemp)
@@ -298,7 +295,7 @@ forceExit:
 	if err != nil {
 		exitErr = errors.WithMessage(exitErr, fmt.Sprintf("commander OnExitedBefore failed - %s", err.Error()))
 	}
-	err = subcommandInfo.Subcommand.OnExited(commander.data)
+	err = subcommandInfo.Subcommand.OnExited(commander)
 	if err != nil {
 		exitErr = errors.WithMessage(exitErr, fmt.Sprintf("OnExited failed - %s", err.Error()))
 	}
