@@ -151,8 +151,17 @@ func (commander *Commander) Run() error {
 		}
 	}
 
+	argsToParse := os.Args[1:]
+	if commander.Name != "default" {
+		argsToParse = os.Args[2:]
+	}
+	err := flagSet.Parse(argsToParse)
+	if err != nil {
+		return errors.Wrap(err, "parse flagSet error")
+	}
+
 	// merge envs and config file
-	err := go_config.ConfigManagerInstance.LoadConfig(go_config.Configuration{
+	err = go_config.ConfigManagerInstance.LoadConfig(go_config.Configuration{
 		ConfigFilepath: *configFile,
 	})
 	if err != nil {

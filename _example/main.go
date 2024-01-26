@@ -61,3 +61,4 @@ func main() {
 
 // go run ./_example test2 -- 1.txt 2.txt
 // go run ./_example -- 1.txt
+// go run ./_example --test="sgdfgs" -- 1.txt
