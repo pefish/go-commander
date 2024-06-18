@@ -1,19 +1,26 @@
 package main
 
 import (
-	"flag"
+	_ "net/http/pprof"
+
 	commander2 "github.com/pefish/go-commander"
 	go_config "github.com/pefish/go-config"
 	go_logger "github.com/pefish/go-logger"
-	_ "net/http/pprof"
 )
+
+type Config struct {
+	Test    string `json:"test" default:"default-flag-test" usage:"test flag set"`
+	FuckInt int    `json:"fuck-int" default:"888" usage:"test fuck int"`
+	commander2.BasicConfig
+}
+
+var GlobalConfig Config
 
 type TestSubCommand struct {
 }
 
-func (t TestSubCommand) DecorateFlagSet(flagSet *flag.FlagSet) error {
-	flagSet.String("test", "default-flag-test", "")
-	return nil
+func (t TestSubCommand) Config() interface{} {
+	return &GlobalConfig
 }
 
 func (t TestSubCommand) Init(command *commander2.Commander) error {
@@ -21,7 +28,13 @@ func (t TestSubCommand) Init(command *commander2.Commander) error {
 }
 
 func (t TestSubCommand) Start(command *commander2.Commander) error {
-	go_logger.Logger.InfoFRaw("command: %s, test param: %s, args: %#v", command.Name, go_config.ConfigManagerInstance.MustString("test"), command.Args)
+	go_logger.Logger.InfoFRaw(
+		"command: %s, test param: %s, args: %#v",
+		command.Name,
+		go_config.ConfigManagerInstance.MustString("test"),
+		command.Args,
+	)
+	go_logger.Logger.InfoFRaw("GlobalConfig: %#v", GlobalConfig)
 	return nil
 }
 
@@ -62,3 +75,5 @@ func main() {
 // go run ./_example test2 -- 1.txt 2.txt
 // go run ./_example -- 1.txt
 // go run ./_example --test="sgdfgs" -- 1.txt
+// TEST=env-test go run ./_example --config ./_example/config.yaml -- 1.txt
+// FUCK_INT=111 go run ./_example --fuck-int=123 -- 1.txt

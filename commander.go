@@ -4,22 +4,34 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	go_config "github.com/pefish/go-config"
-	"github.com/pefish/go-logger"
-	"github.com/pkg/errors"
 	"net/http"
 	"os"
 	"os/signal"
 	"path"
+	"reflect"
 	"strings"
 	"syscall"
+
+	go_config "github.com/pefish/go-config"
+	go_format "github.com/pefish/go-format"
+	go_logger "github.com/pefish/go-logger"
+	"github.com/pkg/errors"
 )
 
 type ISubcommand interface {
-	DecorateFlagSet(flagSet *flag.FlagSet) error
+	Config() interface{}
 	Init(data *Commander) error
 	Start(data *Commander) error
 	OnExited(data *Commander) error
+}
+
+type BasicConfig struct {
+	Version      bool   `json:"version"`
+	LogLevel     string `json:"log-level"`
+	Config       string `json:"config"`
+	EnablePprof  bool   `json:"enable-pprof"`
+	PprofAddress string `json:"pprof-address"`
+	DataDir      string `json:"data-dir"`
 }
 
 type SubcommandInfo struct {
@@ -34,8 +46,6 @@ type Commander struct {
 	appName            string
 	appDesc            string
 	fnToSetCommonFlags func(flagSet *flag.FlagSet)
-
-	cacheFs *os.File
 
 	subCommandValid bool
 
@@ -144,36 +154,33 @@ func (commander *Commander) Run() error {
 	if commander.fnToSetCommonFlags != nil {
 		commander.fnToSetCommonFlags(flagSet)
 	}
-	if subcommandInfo != nil {
-		err := subcommandInfo.Subcommand.DecorateFlagSet(flagSet)
-		if err != nil {
-			return errors.Wrap(err, "Decorate flagSet error.")
-		}
+	// 将传进来的 config 信息转换成 flag set
+	err := parseConfigToFlagSet(flagSet, subcommandInfo.Subcommand.Config())
+	if err != nil {
+		return errors.Wrap(err, "ParseConfigToFlagSet flagSet error.")
 	}
 
 	argsToParse := os.Args[1:]
 	if commander.Name != "default" {
 		argsToParse = os.Args[2:]
 	}
-	err := flagSet.Parse(argsToParse)
+	err = flagSet.Parse(argsToParse)
 	if err != nil {
-		return errors.Wrap(err, "parse flagSet error")
+		return errors.Wrap(err, "Parse flagSet error.")
 	}
 
-	// merge envs and config file
-	err = go_config.ConfigManagerInstance.LoadConfig(go_config.Configuration{
-		ConfigFilepath: *configFile,
-	})
-	if err != nil {
-		return errors.Errorf("load config file error - %s", err)
-	}
 	go_config.ConfigManagerInstance.MergeFlagSet(flagSet)
-	envKeyPairs := make(map[string]string, 5)
-	for k, _ := range go_config.ConfigManagerInstance.Configs() {
-		env := strings.ReplaceAll(strings.ToUpper(k), "-", "_")
-		envKeyPairs[env] = k
+	if configFile != nil && *configFile != "" {
+		err = go_config.ConfigManagerInstance.MergeConfigFile(*configFile)
+		if err != nil {
+			return errors.Errorf("Load config file error - %s", err)
+		}
+		commander.ConfigFile = *configFile
 	}
-	go_config.ConfigManagerInstance.MergeEnvs(envKeyPairs)
+	err = go_config.ConfigManagerInstance.Unmarshal(subcommandInfo.Subcommand.Config())
+	if err != nil {
+		return errors.Errorf("Unmarshal config error - %s", err)
+	}
 
 	logLevel, err := go_config.ConfigManagerInstance.String("log-level")
 	if err != nil {
@@ -181,8 +188,6 @@ func (commander *Commander) Run() error {
 	}
 	commander.LogLevel = logLevel
 	go_logger.Logger = go_logger.NewLogger(logLevel)
-
-	commander.ConfigFile = *configFile
 
 	args := make([]string, 0)
 	argsStartIndex := len(os.Args) - 1
@@ -293,7 +298,6 @@ forceExit:
 			if ctrlCCountTemp <= 0 { // Ctrl C n 次强制退出，不等 start 函数了
 				break forceExit
 			}
-			break
 		case exitErr = <-waitErrorChan:
 			break forceExit
 		}
@@ -301,7 +305,7 @@ forceExit:
 
 	err = commander.onExitedBefore()
 	if err != nil {
-		exitErr = errors.WithMessage(exitErr, fmt.Sprintf("commander OnExitedBefore failed - %s", err.Error()))
+		exitErr = errors.WithMessage(exitErr, fmt.Sprintf("Commander OnExitedBefore failed - %s", err.Error()))
 	}
 	err = subcommandInfo.Subcommand.OnExited(commander)
 	if err != nil {
@@ -309,7 +313,7 @@ forceExit:
 	}
 	err = commander.onExitedAfter()
 	if err != nil {
-		exitErr = errors.WithMessage(exitErr, fmt.Sprintf("commander OnExitedAfter failed - %s", err.Error()))
+		exitErr = errors.WithMessage(exitErr, fmt.Sprintf("Commander OnExitedAfter failed - %s", err.Error()))
 	}
 	return exitErr
 }
@@ -319,5 +323,53 @@ func (commander *Commander) onExitedAfter() error {
 }
 
 func (commander *Commander) onExitedBefore() error {
+	return nil
+}
+
+// parseConfigToFlagSet dynamically parses the config struct and sets up flags
+func parseConfigToFlagSet(flagSet *flag.FlagSet, config interface{}) error {
+	// Get the type and value of the config
+	configType := reflect.TypeOf(config)
+	configValue := reflect.ValueOf(config)
+
+	// If the config is a pointer, get the element it points to
+	if configType.Kind() == reflect.Ptr {
+		configType = configType.Elem()
+		configValue = configValue.Elem()
+	}
+
+	// Iterate over the fields of the config struct
+	for i := 0; i < configType.NumField(); i++ {
+		field := configType.Field(i)
+		fieldValue := configValue.Field(i)
+
+		// Get the tag values
+		jsonTag := field.Tag.Get("json")
+		defaultTag := field.Tag.Get("default")
+		usageTag := field.Tag.Get("usage")
+
+		// Use the tag values to define the flags
+		switch fieldValue.Kind() {
+		case reflect.String:
+			flagSet.String(jsonTag, defaultTag, usageTag)
+		case reflect.Bool:
+			defaultValue := false
+			if defaultTag == "true" {
+				defaultValue = true
+			}
+			flagSet.Bool(jsonTag, defaultValue, usageTag)
+		case reflect.Int:
+			defaultValue := 0
+			if defaultTag != "" {
+				i, err := go_format.FormatInstance.ToInt(defaultTag)
+				if err != nil {
+					return errors.Wrapf(err, "Default tag <%s> to int error.", defaultTag)
+				}
+				defaultValue = i
+			}
+			flagSet.Int(jsonTag, defaultValue, usageTag)
+		}
+	}
+
 	return nil
 }
