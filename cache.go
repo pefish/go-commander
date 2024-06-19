@@ -2,7 +2,7 @@ package commander
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"os"
 	"sync"
 
@@ -51,7 +51,7 @@ func (c *Cache) Init(filename string) error {
 		return err
 	}
 	c.cacheFs = f
-	b, err := ioutil.ReadAll(c.cacheFs)
+	b, err := io.ReadAll(c.cacheFs)
 	if err != nil {
 		return err
 	}
