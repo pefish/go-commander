@@ -156,16 +156,18 @@ func (commander *Commander) Run() error {
 		commander.fnToSetCommonFlags(flagSet)
 	}
 	// 将传进来的 config 信息转换成 flag set
-	err := parseConfigToFlagSet(flagSet, subcommandInfo.Subcommand.Config())
-	if err != nil {
-		return errors.Wrap(err, "ParseConfigToFlagSet flagSet error.")
+	if subcommandInfo.Subcommand.Config() != nil {
+		err := parseConfigToFlagSet(flagSet, subcommandInfo.Subcommand.Config())
+		if err != nil {
+			return errors.Wrap(err, "ParseConfigToFlagSet flagSet error.")
+		}
 	}
 
 	argsToParse := os.Args[1:]
 	if commander.Name != "default" {
 		argsToParse = os.Args[2:]
 	}
-	err = flagSet.Parse(argsToParse)
+	err := flagSet.Parse(argsToParse)
 	if err != nil {
 		return errors.Wrap(err, "Parse flagSet error.")
 	}
@@ -178,9 +180,11 @@ func (commander *Commander) Run() error {
 		}
 		commander.ConfigFile = *configFile
 	}
-	err = go_config.ConfigManagerInstance.Unmarshal(subcommandInfo.Subcommand.Config())
-	if err != nil {
-		return errors.Errorf("Unmarshal config error - %s", err)
+	if subcommandInfo.Subcommand.Config() != nil {
+		err := go_config.ConfigManagerInstance.Unmarshal(subcommandInfo.Subcommand.Config())
+		if err != nil {
+			return errors.Errorf("Unmarshal config error - %s", err)
+		}
 	}
 
 	logLevel, err := go_config.ConfigManagerInstance.String("log-level")
@@ -267,9 +271,11 @@ func (commander *Commander) Run() error {
 		return err
 	}
 
-	_, err = commander.cache.Load(subcommandInfo.Subcommand.Data())
-	if err != nil {
-		return err
+	if subcommandInfo.Subcommand.Data() != nil {
+		_, err = commander.cache.Load(subcommandInfo.Subcommand.Data())
+		if err != nil {
+			return err
+		}
 	}
 
 	err = subcommandInfo.Subcommand.Init(commander)
@@ -313,9 +319,11 @@ forceExit:
 	if err != nil {
 		exitErr = errors.WithMessage(exitErr, fmt.Sprintf("Commander OnExitedBefore failed - %s", err.Error()))
 	}
-	err = commander.cache.Save(subcommandInfo.Subcommand.Data())
-	if err != nil {
-		return err
+	if subcommandInfo.Subcommand.Data() != nil {
+		err = commander.cache.Save(subcommandInfo.Subcommand.Data())
+		if err != nil {
+			return err
+		}
 	}
 	err = subcommandInfo.Subcommand.OnExited(commander)
 	if err != nil {
