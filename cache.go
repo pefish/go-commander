@@ -2,21 +2,22 @@ package commander
 
 import (
 	"encoding/json"
-	"github.com/pkg/errors"
 	"io/ioutil"
 	"os"
 	"sync"
+
+	"github.com/pkg/errors"
 )
 
 type Cache struct {
-	data []byte
+	data    []byte
 	cacheFs *os.File
 	sync.Mutex
 }
 
 func (c *Cache) Save(data interface{}) error {
 	if c.cacheFs == nil {
-		return errors.New("cache must be init first")
+		return errors.New("Cache must be init first.")
 	}
 	err := c.cacheFs.Truncate(0)
 	if err != nil {
@@ -65,7 +66,7 @@ func (c *Cache) Init(filename string) error {
 func (c *Cache) Load(out interface{}) (notFound bool, err error) {
 	c.Lock()
 	defer c.Unlock()
-	if c.data == nil {  // 代表没有数据
+	if c.data == nil { // 代表没有数据
 		return true, nil
 	}
 	err = json.Unmarshal(c.data, out)

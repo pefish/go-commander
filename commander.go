@@ -368,6 +368,16 @@ func parseConfigToFlagSet(flagSet *flag.FlagSet, config interface{}) error {
 				defaultValue = i
 			}
 			flagSet.Int(jsonTag, defaultValue, usageTag)
+		case reflect.Float64:
+			defaultValue := 0.0
+			if defaultTag != "" {
+				i, err := go_format.FormatInstance.ToFloat64(defaultTag)
+				if err != nil {
+					return errors.Wrapf(err, "Default tag <%s> to int error.", defaultTag)
+				}
+				defaultValue = i
+			}
+			flagSet.Float64(jsonTag, defaultValue, usageTag)
 		}
 	}
 
