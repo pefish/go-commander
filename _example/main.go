@@ -22,11 +22,19 @@ type Config struct {
 
 var GlobalConfig Config
 
+var Data struct {
+	Data1 string `json:"data1"`
+}
+
 type TestSubCommand struct {
 }
 
 func (t TestSubCommand) Config() interface{} {
 	return &GlobalConfig
+}
+
+func (t TestSubCommand) Data() interface{} {
+	return &Data
 }
 
 func (t TestSubCommand) Init(command *commander2.Commander) error {
@@ -41,6 +49,8 @@ func (t TestSubCommand) Start(command *commander2.Commander) error {
 		command.Args,
 	)
 	go_logger.Logger.InfoFRaw("GlobalConfig: %#v", GlobalConfig)
+	go_logger.Logger.InfoFRaw("Data: %#v", Data)
+	Data.Data1 = "data2"
 	return nil
 }
 

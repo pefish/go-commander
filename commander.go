@@ -20,6 +20,7 @@ import (
 
 type ISubcommand interface {
 	Config() interface{}
+	Data() interface{} // 应用数据。应用启动时自动从应用目录加载数据，应用退出是自动保存到应用目录
 	Init(data *Commander) error
 	Start(data *Commander) error
 	OnExited(data *Commander) error
@@ -46,6 +47,7 @@ type Commander struct {
 	appName            string
 	appDesc            string
 	fnToSetCommonFlags func(flagSet *flag.FlagSet)
+	cache              Cache
 
 	subCommandValid bool
 
@@ -53,7 +55,6 @@ type Commander struct {
 	DataDir    string
 	LogLevel   string
 	ConfigFile string
-	Cache      Cache
 	Args       map[string]string
 	Ctx        context.Context
 	CancelFunc context.CancelFunc
@@ -261,7 +262,12 @@ func (commander *Commander) Run() error {
 	}
 
 	// load cache
-	err = commander.Cache.Init(path.Join(commander.DataDir, "data.json"))
+	err = commander.cache.Init(path.Join(commander.DataDir, "data.json"))
+	if err != nil {
+		return err
+	}
+
+	_, err = commander.cache.Load(subcommandInfo.Subcommand.Data())
 	if err != nil {
 		return err
 	}
@@ -306,6 +312,10 @@ forceExit:
 	err = commander.onExitedBefore()
 	if err != nil {
 		exitErr = errors.WithMessage(exitErr, fmt.Sprintf("Commander OnExitedBefore failed - %s", err.Error()))
+	}
+	err = commander.cache.Save(subcommandInfo.Subcommand.Data())
+	if err != nil {
+		return err
 	}
 	err = subcommandInfo.Subcommand.OnExited(commander)
 	if err != nil {
