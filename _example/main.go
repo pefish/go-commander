@@ -71,13 +71,13 @@ func main() {
 		},
 		Subcommand: TestSubCommand{},
 	})
-	commander.RegisterDefaultSubcommand(&commander2.SubcommandInfo{
-		Desc: "haha",
-		Args: []string{
-			"file",
-		},
-		Subcommand: TestSubCommand{},
-	})
+	// commander.RegisterDefaultSubcommand(&commander2.SubcommandInfo{
+	// 	Desc: "haha",
+	// 	Args: []string{
+	// 		"file",
+	// 	},
+	// 	Subcommand: TestSubCommand{},
+	// })
 	//commander.RegisterFnToSetCommonFlags(func(flagSet *flag.FlagSet) {
 	//	flagSet.String("test-test", "", "path to config file")
 	//})

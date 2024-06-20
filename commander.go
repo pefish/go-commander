@@ -156,7 +156,8 @@ func (commander *Commander) Run() error {
 		commander.fnToSetCommonFlags(flagSet)
 	}
 	// 将传进来的 config 信息转换成 flag set
-	if subcommandInfo.Subcommand.Config() != nil {
+	if subcommandInfo != nil && subcommandInfo.Subcommand.Config() != nil {
+		// 子命令的 options 都是继承根命令的
 		err := parseConfigToFlagSet(flagSet, subcommandInfo.Subcommand.Config())
 		if err != nil {
 			return errors.Wrap(err, "ParseConfigToFlagSet flagSet error.")
@@ -167,11 +168,15 @@ func (commander *Commander) Run() error {
 	if commander.Name != "default" {
 		argsToParse = os.Args[2:]
 	}
-	err := flagSet.Parse(argsToParse)
+
+	err := flagSet.Parse(argsToParse) // --help 等选项在这里出错的话，程序会在这里结束
 	if err != nil {
 		return errors.Wrap(err, "Parse flagSet error.")
 	}
 
+	if subcommandInfo == nil {
+		return errors.Errorf("Subcommand error: <%s> subcommand not found.", commander.Name)
+	}
 	go_config.ConfigManagerInstance.MergeFlagSet(flagSet)
 	if configFile != nil && *configFile != "" {
 		err = go_config.ConfigManagerInstance.MergeConfigFile(*configFile)
@@ -242,10 +247,6 @@ func (commander *Commander) Run() error {
 		os.Exit(0)
 	}
 
-	if subcommandInfo == nil {
-		return errors.Errorf("Subcommand error: %s subcommand not found.", commander.Name)
-	}
-
 	pprofEnable, err := go_config.ConfigManagerInstance.Bool("enable-pprof")
 	if err != nil {
 		return errors.Wrap(err, "Get enable-pprof config error.")
@@ -256,7 +257,7 @@ func (commander *Commander) Run() error {
 	}
 	if pprofEnable {
 		pprofHttpServer := &http.Server{Addr: pprofAddress}
-		go func() { // 无需担心进程退出，不存在leak
+		go func() { // 无需担心进程退出，不存在 leak
 			go_logger.Logger.InfoF("Started pprof server on %s, you can open url [http://%s/debug/pprof/] to enjoy!!", pprofHttpServer.Addr, pprofHttpServer.Addr)
 			err := pprofHttpServer.ListenAndServe()
 			if err != nil {
