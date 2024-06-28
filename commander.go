@@ -397,6 +397,8 @@ func parseConfigToFlagSet(flagSet *flag.FlagSet, config interface{}) error {
 				defaultValue = i
 			}
 			flagSet.Float64(jsonTag, defaultValue, usageTag)
+		default:
+			return errors.Errorf("Type <%s> not be supported.", fieldValue.Kind().String())
 		}
 	}
 
