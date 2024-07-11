@@ -91,17 +91,17 @@ func (commander *Commander) DisableSubCommand() {
 
 func (commander *Commander) Run() error {
 	commander.Name = "default"
-	subcommandInfo := commander.subcommands[commander.Name]
 	if len(os.Args) > 1 && !strings.HasPrefix(os.Args[1], "-") {
+		// 输入了子命令
 		if !commander.subCommandValid {
 			return errors.Errorf("Subcommand is banned!")
 		}
+
 		commander.Name = os.Args[1]
-		subcommandInfo_, ok := commander.subcommands[commander.Name]
-		if !ok {
-			return errors.Errorf("Subcommand <%s> not found!", commander.Name)
-		}
-		subcommandInfo = subcommandInfo_
+	}
+	subcommandInfo, ok := commander.subcommands[commander.Name]
+	if !ok {
+		return errors.Errorf("Subcommand <%s> not found!", commander.Name)
 	}
 
 	flagSet := flag.NewFlagSet(commander.appName, flag.ExitOnError)
@@ -398,6 +398,9 @@ func parseConfigToFlagSet(flagSet *flag.FlagSet, config interface{}) error {
 			}
 			flagSet.Float64(jsonTag, defaultValue, usageTag)
 		default:
+			if strings.Contains(fieldValue.String(), "commander.BasicConfig") {
+				continue
+			}
 			return errors.Errorf("Type <%s> not be supported.", fieldValue.Kind().String())
 		}
 	}

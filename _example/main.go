@@ -11,12 +11,6 @@ import (
 type Config struct {
 	Test    string `json:"test" default:"default-flag-test" usage:"test flag set"`
 	FuckInt int    `json:"fuck-int" default:"888" usage:"test fuck int"`
-	Db      struct {
-		Db   string `json:"db"`
-		Host string `json:"host"`
-		User string `json:"user"`
-		Pass string `json:"pass"`
-	} `json:"db"`
 	commander2.BasicConfig
 }
 
@@ -71,13 +65,13 @@ func main() {
 		},
 		Subcommand: TestSubCommand{},
 	})
-	// commander.RegisterDefaultSubcommand(&commander2.SubcommandInfo{
-	// 	Desc: "haha",
-	// 	Args: []string{
-	// 		"file",
-	// 	},
-	// 	Subcommand: TestSubCommand{},
-	// })
+	commander.RegisterDefaultSubcommand(&commander2.SubcommandInfo{
+		Desc: "haha",
+		Args: []string{
+			"file",
+		},
+		Subcommand: TestSubCommand{},
+	})
 	//commander.RegisterFnToSetCommonFlags(func(flagSet *flag.FlagSet) {
 	//	flagSet.String("test-test", "", "path to config file")
 	//})
