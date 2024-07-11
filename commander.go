@@ -212,7 +212,7 @@ func (commander *Commander) Run() error {
 	}
 	for i, arg := range subcommandInfo.Args {
 		if i > len(args)-1 {
-			return errors.Errorf("Arg <%s> not be set.", arg)
+			return errors.Errorf("Arg <%s> not be set. args: %#v", arg, args)
 		}
 		commander.Args[arg] = args[i]
 	}
