@@ -99,10 +99,7 @@ func (commander *Commander) Run() error {
 
 		commander.Name = os.Args[1]
 	}
-	subcommandInfo, ok := commander.subcommands[commander.Name]
-	if !ok {
-		return errors.Errorf("Subcommand <%s> not found!", commander.Name)
-	}
+	subcommandInfo := commander.subcommands[commander.Name]
 
 	flagSet := flag.NewFlagSet(commander.appName, flag.ExitOnError)
 	flagSet.Usage = func() {
@@ -169,14 +166,15 @@ func (commander *Commander) Run() error {
 		argsToParse = os.Args[2:]
 	}
 
+	if argsToParse[0] != "--help" && subcommandInfo == nil {
+		return errors.Errorf("Subcommand error: <%s> subcommand not found.", commander.Name)
+	}
+
 	err := flagSet.Parse(argsToParse) // --help 等选项在这里出错的话，程序会在这里结束
 	if err != nil {
 		return errors.Wrap(err, "Parse flagSet error.")
 	}
 
-	if subcommandInfo == nil {
-		return errors.Errorf("Subcommand error: <%s> subcommand not found.", commander.Name)
-	}
 	go_config.ConfigManagerInstance.MergeFlagSet(flagSet)
 	if configFile != nil && *configFile != "" {
 		err = go_config.ConfigManagerInstance.MergeConfigFile(*configFile)
