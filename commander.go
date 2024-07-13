@@ -162,11 +162,11 @@ func (commander *Commander) Run() error {
 	}
 
 	argsToParse := os.Args[1:]
-	if commander.Name != "default" {
+	if commander.Name != "default" { // 用户输入了子命令
 		argsToParse = os.Args[2:]
 	}
 
-	if argsToParse[0] != "--help" && subcommandInfo == nil {
+	if (len(argsToParse) == 0 || argsToParse[0] != "--help") && subcommandInfo == nil {
 		return errors.Errorf("Subcommand error: <%s> subcommand not found.", commander.Name)
 	}
 
