@@ -13,6 +13,7 @@ import (
 	"syscall"
 
 	go_config "github.com/pefish/go-config"
+	go_file "github.com/pefish/go-file"
 	go_format "github.com/pefish/go-format"
 	go_logger "github.com/pefish/go-logger"
 	"github.com/pkg/errors"
@@ -146,6 +147,7 @@ func (commander *Commander) Run() error {
 	flagSet.Bool("version", false, "print version string")
 	flagSet.String("log-level", "info", "set log verbosity: debug, info, warn, or error")
 	configFile := flagSet.String("config", os.Getenv("GO_CONFIG"), "path to config file")
+	envFile := flagSet.String("env-file", ".env", "path to env file")
 	flagSet.Bool("enable-pprof", false, "enable pprof")
 	flagSet.String("pprof-address", "0.0.0.0:9191", "<addr>:<port> to listen on for pprof")
 	flagSet.String("data-dir", os.ExpandEnv("$HOME/.")+commander.appName, "data dictionary")
@@ -175,6 +177,12 @@ func (commander *Commander) Run() error {
 		return errors.Wrap(err, "Parse flagSet error.")
 	}
 
+	if go_file.FileInstance.Exists(*envFile) {
+		err = go_config.ConfigManagerInstance.SetEnvFile(*envFile)
+		if err != nil {
+			return errors.Errorf("Set env file error - %s", err)
+		}
+	}
 	go_config.ConfigManagerInstance.MergeFlagSet(flagSet)
 	if configFile != nil && *configFile != "" {
 		err = go_config.ConfigManagerInstance.MergeConfigFile(*configFile)

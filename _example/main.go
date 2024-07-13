@@ -11,6 +11,7 @@ import (
 type Config struct {
 	Test    string `json:"test" default:"default-flag-test" usage:"test flag set"`
 	FuckInt int    `json:"fuck-int" default:"888" usage:"test fuck int"`
+	Abc     int    `json:"abc" default:"888" usage:"test fuck int"`
 	commander2.BasicConfig
 }
 
@@ -87,3 +88,4 @@ func main() {
 // go run ./_example --test="sgdfgs" -- 1.txt
 // TEST=env-test go run ./_example --config ./_example/config.yaml -- 1.txt
 // FUCK_INT=111 go run ./_example --fuck-int=123 -- 1.txt
+// FUCK_INT=111 go run ./_example --fuck-int=123 --env-file=./_example/.env -- 1.txt
