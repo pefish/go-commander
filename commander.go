@@ -15,6 +15,8 @@ import (
 	go_config "github.com/pefish/go-config"
 	go_file "github.com/pefish/go-file"
 	go_format "github.com/pefish/go-format"
+	i_logger "github.com/pefish/go-interface/i-logger"
+	t_logger "github.com/pefish/go-interface/t-logger"
 	go_logger "github.com/pefish/go-logger"
 	"github.com/pkg/errors"
 )
@@ -59,6 +61,7 @@ type Commander struct {
 	Args       map[string]string
 	Ctx        context.Context
 	CancelFunc context.CancelFunc
+	Logger     i_logger.ILogger
 }
 
 func NewCommander(appName, version, appDesc string) *Commander {
@@ -203,7 +206,7 @@ func (commander *Commander) Run() error {
 		return errors.Wrap(err, "Get log-level config error.")
 	}
 	commander.LogLevel = logLevel
-	go_logger.Logger = go_logger.NewLogger(logLevel)
+	commander.Logger = go_logger.NewLogger(t_logger.Level(logLevel))
 
 	args := make([]string, 0)
 	argsStartIndex := len(os.Args) - 1
