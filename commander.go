@@ -169,7 +169,7 @@ Global Options:
 						argsStr = fmt.Sprintf(" -- %s", strings.Join(argsStrArr, " "))
 					}
 					if name == "default" {
-						fmt.Printf("  %s [OPTIONS]%s\tDefault subcommand. %s\n", commander.appName, argsStr, info.Desc)
+						fmt.Printf("  %s [OPTIONS]%s\t%s\n", commander.appName, argsStr, info.Desc)
 					} else {
 						fmt.Printf("  %s %s [OPTIONS]%s\t%s\n", commander.appName, name, argsStr, info.Desc)
 					}
