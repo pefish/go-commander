@@ -164,11 +164,14 @@ Global Options:
 					for i, arg := range info.Args {
 						argsStrArr[i] = fmt.Sprintf("<%s>", arg)
 					}
-					argsStr := strings.Join(argsStrArr, " ")
+					argsStr := ""
+					if len(argsStrArr) > 0 {
+						argsStr = fmt.Sprintf(" -- %s", strings.Join(argsStrArr, " "))
+					}
 					if name == "default" {
-						fmt.Printf("  %s [default] [OPTIONS] -- %s\tDefault subcommand. %s\n", commander.appName, argsStr, info.Desc)
+						fmt.Printf("  %s [OPTIONS]%s\tDefault subcommand. %s\n", commander.appName, argsStr, info.Desc)
 					} else {
-						fmt.Printf("  %s %s [OPTIONS] -- %s\t%s\n", commander.appName, name, argsStr, info.Desc)
+						fmt.Printf("  %s %s [OPTIONS]%s\t%s\n", commander.appName, name, argsStr, info.Desc)
 					}
 				}
 				fmt.Printf("\n")
