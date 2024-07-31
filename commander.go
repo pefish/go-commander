@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"path"
 	"reflect"
+	"slices"
 	"strings"
 	"syscall"
 
@@ -45,14 +46,11 @@ type SubcommandInfo struct {
 }
 
 type Commander struct {
-	subcommands        map[string]*SubcommandInfo
-	version            string
-	appName            string
-	appDesc            string
-	fnToSetCommonFlags func(flagSet *flag.FlagSet)
-	cache              Cache
-
-	subCommandValid bool
+	subcommands map[string]*SubcommandInfo
+	version     string
+	appName     string
+	appDesc     string
+	cache       Cache
 
 	Name       string
 	DataDir    string
@@ -66,12 +64,11 @@ type Commander struct {
 
 func NewCommander(appName, version, appDesc string) *Commander {
 	return &Commander{
-		subcommands:     make(map[string]*SubcommandInfo),
-		version:         version,
-		appName:         appName,
-		appDesc:         appDesc,
-		Args:            make(map[string]string),
-		subCommandValid: true,
+		subcommands: make(map[string]*SubcommandInfo),
+		version:     version,
+		appName:     appName,
+		appDesc:     appDesc,
+		Args:        make(map[string]string),
 	}
 }
 
@@ -84,69 +81,8 @@ func (commander *Commander) RegisterDefaultSubcommand(subcommandInfo *Subcommand
 	commander.subcommands["default"] = subcommandInfo
 }
 
-// 用于设置所有子命令共用的选项
-func (commander *Commander) RegisterFnToSetCommonFlags(flagSet func(set *flag.FlagSet)) {
-	commander.fnToSetCommonFlags = flagSet
-}
-
-func (commander *Commander) DisableSubCommand() {
-	commander.subCommandValid = false
-}
-
 func (commander *Commander) Run() error {
-	commander.Name = "default"
-	if len(os.Args) > 1 && !strings.HasPrefix(os.Args[1], "-") {
-		// 输入了子命令
-		if !commander.subCommandValid {
-			return errors.Errorf("Subcommand is banned!")
-		}
-
-		commander.Name = os.Args[1]
-	}
-	subcommandInfo := commander.subcommands[commander.Name]
-
 	flagSet := flag.NewFlagSet(commander.appName, flag.ExitOnError)
-	flagSet.Usage = func() {
-
-		fmt.Printf("\n%s\n\n", commander.appDesc)
-
-		fmt.Printf("Usage of <%s>:\n", flagSet.Name())
-		usageStr := fmt.Sprintf("  %s", flagSet.Name())
-		if commander.subCommandValid {
-			usageStr += " [subcommand]"
-		}
-		usageStr += " [options]"
-		if !commander.subCommandValid && len(commander.subcommands["default"].Args) > 0 {
-			for _, arg := range commander.subcommands["default"].Args {
-				usageStr += fmt.Sprintf(" <%s>", arg)
-			}
-		}
-		fmt.Printf("%s\n\n", usageStr)
-
-		// 如果有子命令，打印所有子命令
-		if commander.subCommandValid {
-			if len(commander.subcommands) > 0 {
-				fmt.Println("Commands:")
-				for name, info := range commander.subcommands {
-					argsStrArr := make([]string, len(info.Args))
-					for i, arg := range info.Args {
-						argsStrArr[i] = fmt.Sprintf("<%s>", arg)
-					}
-					argsStr := strings.Join(argsStrArr, " ")
-					if name == "default" {
-						fmt.Printf("  [default] %s\tDefault subcommand. %s\n", argsStr, info.Desc)
-					} else {
-						fmt.Printf("  %s %s\t%s\n", name, argsStr, info.Desc)
-					}
-				}
-				fmt.Printf("\n")
-			}
-		}
-
-		fmt.Println("Options:")
-		flagSet.PrintDefaults()
-		fmt.Printf("\n")
-	}
 	flagSet.Bool("version", false, "print version string")
 	flagSet.String("log-level", "info", "set log verbosity: debug, info, warn, or error")
 	configFile := flagSet.String("config", os.Getenv("GO_CONFIG"), "path to config file")
@@ -154,28 +90,117 @@ func (commander *Commander) Run() error {
 	flagSet.Bool("enable-pprof", false, "enable pprof")
 	flagSet.String("pprof-address", "0.0.0.0:9191", "<addr>:<port> to listen on for pprof")
 	flagSet.String("data-dir", os.ExpandEnv("$HOME/.")+commander.appName, "data dictionary")
-	if commander.fnToSetCommonFlags != nil {
-		commander.fnToSetCommonFlags(flagSet)
-	}
-	// 将传进来的 config 信息转换成 flag set
-	if subcommandInfo != nil && subcommandInfo.Subcommand.Config() != nil {
-		// 子命令的 options 都是继承根命令的
-		err := parseConfigToFlagSet(flagSet, subcommandInfo.Subcommand.Config())
-		if err != nil {
-			return errors.Wrap(err, "ParseConfigToFlagSet flagSet error.")
-		}
-	}
 
+	var subcommandInfo *SubcommandInfo
 	argsToParse := os.Args[1:]
-	if commander.Name != "default" { // 用户输入了子命令
+	if len(argsToParse) > 0 && !strings.HasPrefix(argsToParse[0], "-") {
+		// 输入了子命令
+		commander.Name = os.Args[1]
 		argsToParse = os.Args[2:]
+
+		subcommandInfo_, ok := commander.subcommands[commander.Name]
+		if !ok {
+			fmt.Printf("%s: '%s' is not a command.\n", commander.appName, commander.Name)
+			fmt.Printf("See '%s --help'\n", commander.appName)
+			return nil
+		}
+		subcommandInfo = subcommandInfo_
+
+		flagSetJustForPrintHelpInfo := flag.NewFlagSet(commander.appName, flag.ExitOnError)
+		if subcommandInfo.Subcommand.Config() != nil {
+			// 将传进来的 Config 对象加载到 flagSet 中，使其能正常打印帮助信息
+			err := parseConfigToFlagSet(flagSetJustForPrintHelpInfo, subcommandInfo.Subcommand.Config())
+			if err != nil {
+				return errors.Wrap(err, "ParseConfigToFlagSet flagSet error.")
+			}
+		}
+
+		flagSet.Usage = func() {
+			argsStrArr := make([]string, len(subcommandInfo.Args))
+			for i, arg := range subcommandInfo.Args {
+				argsStrArr[i] = fmt.Sprintf("<%s>", arg)
+			}
+			fmt.Printf(
+				`
+
+%s
+
+Usage:
+  %s %s [OPTIONS] -- %s
+
+Options:
+`,
+				subcommandInfo.Desc,
+				commander.appName,
+				commander.Name,
+				strings.Join(argsStrArr, " "),
+			)
+			flagSetJustForPrintHelpInfo.PrintDefaults()
+			fmt.Printf(`
+
+Global Options:
+`)
+			flagSet.PrintDefaults()
+			fmt.Printf("\n")
+		}
+	} else {
+		flagSet.Usage = func() {
+
+			fmt.Printf("\n%s\n\n", commander.appDesc)
+
+			fmt.Printf("Usage:\n")
+			usageStr := fmt.Sprintf("  %s", flagSet.Name())
+			if len(commander.subcommands) > 0 {
+				usageStr += " [COMMAND]"
+			}
+			usageStr += " [OPTIONS]"
+			fmt.Printf("%s\n\n", usageStr)
+
+			// 如果有子命令，打印所有子命令
+			if len(commander.subcommands) > 0 {
+				fmt.Println("SubCommands:")
+				for name, info := range commander.subcommands {
+					argsStrArr := make([]string, len(info.Args))
+					for i, arg := range info.Args {
+						argsStrArr[i] = fmt.Sprintf("<%s>", arg)
+					}
+					argsStr := strings.Join(argsStrArr, " ")
+					if name == "default" {
+						fmt.Printf("  %s [default] [OPTIONS] -- %s\tDefault subcommand. %s\n", commander.appName, argsStr, info.Desc)
+					} else {
+						fmt.Printf("  %s %s [OPTIONS] -- %s\t%s\n", commander.appName, name, argsStr, info.Desc)
+					}
+				}
+				fmt.Printf("\n")
+			}
+
+			fmt.Println("Global Options:")
+			flagSet.PrintDefaults()
+			fmt.Printf("\n")
+		}
+
+		commander.Name = "default"
+		subcommandInfo_, ok := commander.subcommands[commander.Name]
+		// default 命令也没有注册
+		if !ok {
+			flagSet.Usage()
+			return nil
+		}
+		subcommandInfo = subcommandInfo_
 	}
 
-	if (len(argsToParse) == 0 || argsToParse[0] != "--help") && subcommandInfo == nil {
-		return errors.Errorf("Subcommand error: <%s> subcommand not found.", commander.Name)
+	if slices.Contains(argsToParse, "--help") || slices.Contains(argsToParse, "-help") {
+		flagSet.Usage()
+		return nil
 	}
 
-	err := flagSet.Parse(argsToParse) // --help 等选项在这里出错的话，程序会在这里结束
+	// 自定义参数
+	err := parseConfigToFlagSet(flagSet, subcommandInfo.Subcommand.Config())
+	if err != nil {
+		return errors.Wrap(err, "ParseConfigToFlagSet flagSet error.")
+	}
+
+	err = flagSet.Parse(argsToParse)
 	if err != nil {
 		return errors.Wrap(err, "Parse flagSet error.")
 	}

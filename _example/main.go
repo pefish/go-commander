@@ -59,7 +59,7 @@ func main() {
 	commander := commander2.NewCommander("test", "v0.0.1", "小工具")
 	//commander.RegisterSubcommand("test", "这是一个测试", TestSubCommand{})
 	commander.RegisterSubcommand("test2", &commander2.SubcommandInfo{
-		Desc: "这是一个测试",
+		Desc: "这是一个 test2 子命令",
 		Args: []string{
 			"arg1",
 			"arg2",
@@ -67,22 +67,21 @@ func main() {
 		Subcommand: TestSubCommand{},
 	})
 	commander.RegisterDefaultSubcommand(&commander2.SubcommandInfo{
-		Desc: "haha",
+		Desc: "这是默认命令",
 		Args: []string{
 			"file",
 		},
 		Subcommand: TestSubCommand{},
 	})
-	//commander.RegisterFnToSetCommonFlags(func(flagSet *flag.FlagSet) {
-	//	flagSet.String("test-test", "", "path to config file")
-	//})
-	//commander.DisableSubCommand()
+
 	err := commander.Run()
 	if err != nil {
 		go_logger.Logger.ErrorFRaw("%s", err.Error())
 	}
 }
 
+// go run ./_example --help
+// go run ./_example test2 --help
 // go run ./_example test2 -- 1.txt 2.txt
 // go run ./_example -- 1.txt
 // go run ./_example --test="sgdfgs" -- 1.txt
