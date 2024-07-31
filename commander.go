@@ -122,7 +122,6 @@ func (commander *Commander) Run() error {
 			}
 			fmt.Printf(
 				`
-
 %s
 
 Usage:
@@ -137,7 +136,6 @@ Options:
 			)
 			flagSetJustForPrintHelpInfo.PrintDefaults()
 			fmt.Printf(`
-
 Global Options:
 `)
 			flagSet.PrintDefaults()
