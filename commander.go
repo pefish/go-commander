@@ -83,7 +83,7 @@ func (commander *Commander) RegisterDefaultSubcommand(subcommandInfo *Subcommand
 
 func (commander *Commander) Run() error {
 	flagSet := flag.NewFlagSet(commander.appName, flag.ExitOnError)
-	flagSet.Bool("version", false, "print version string")
+	version := flagSet.Bool("version", false, "print version string")
 	flagSet.String("log-level", "info", "set log verbosity: debug, info, warn, or error")
 	configFile := flagSet.String("config", os.Getenv("GO_CONFIG"), "path to config file")
 	envFile := flagSet.String("env-file", ".env", "path to env file")
@@ -206,6 +206,11 @@ Global Options:
 		return errors.Wrap(err, "Parse flagSet error.")
 	}
 
+	if *version {
+		fmt.Println(commander.version)
+		return nil
+	}
+
 	if go_file.FileInstance.Exists(*envFile) {
 		err = go_config.ConfigManagerInstance.SetEnvFile(*envFile)
 		if err != nil {
@@ -272,15 +277,6 @@ Global Options:
 		}
 	}
 	commander.DataDir = dataDirStr
-
-	printVersion, err := go_config.ConfigManagerInstance.Bool("version")
-	if err != nil {
-		return errors.Wrap(err, "Get version config error.")
-	}
-	if printVersion {
-		fmt.Println(commander.version)
-		os.Exit(0)
-	}
 
 	pprofEnable, err := go_config.ConfigManagerInstance.Bool("enable-pprof")
 	if err != nil {

@@ -80,6 +80,7 @@ func main() {
 	}
 }
 
+// go run ./_example test2 --version
 // go run ./_example --help
 // go run ./_example test2 --help
 // go run ./_example test2 -- 1.txt 2.txt
