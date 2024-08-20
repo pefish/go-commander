@@ -298,7 +298,7 @@ Global Options:
 	}
 
 	// load cache
-	err = commander.cache.Init(path.Join(commander.DataDir, "data.json"))
+	err = commander.cache.Init(path.Join(commander.DataDir, fmt.Sprintf("data_%s.json", commander.Name)))
 	if err != nil {
 		return err
 	}
