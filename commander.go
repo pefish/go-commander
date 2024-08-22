@@ -97,7 +97,6 @@ func (commander *Commander) Run() error {
 		// 输入了子命令
 		commander.Name = os.Args[1]
 		argsToParse = os.Args[2:]
-
 		subcommandInfo_, ok := commander.subcommands[commander.Name]
 		if !ok {
 			fmt.Printf("%s: '%s' is not a command.\n", commander.appName, commander.Name)
@@ -142,6 +141,24 @@ Global Options:
 			fmt.Printf("\n")
 		}
 	} else {
+		commander.Name = "default"
+		subcommandInfo_, ok := commander.subcommands[commander.Name]
+		// default 命令也没有注册
+		if !ok {
+			flagSet.Usage()
+			return nil
+		}
+		subcommandInfo = subcommandInfo_
+
+		flagSetJustForPrintHelpInfo := flag.NewFlagSet(commander.appName, flag.ExitOnError)
+		if subcommandInfo.Subcommand.Config() != nil {
+			// 将传进来的 Config 对象加载到 flagSet 中，使其能正常打印帮助信息
+			err := parseConfigToFlagSet(flagSetJustForPrintHelpInfo, subcommandInfo.Subcommand.Config())
+			if err != nil {
+				return errors.Wrap(err, "ParseConfigToFlagSet flagSet error.")
+			}
+		}
+
 		flagSet.Usage = func() {
 
 			fmt.Printf("\n%s\n\n", commander.appDesc)
@@ -174,20 +191,17 @@ Global Options:
 				}
 				fmt.Printf("\n")
 			}
+			fmt.Printf(`
+Options:
+`)
+			flagSetJustForPrintHelpInfo.PrintDefaults()
 
-			fmt.Println("Global Options:")
+			fmt.Printf(`
+Global Options:
+`)
 			flagSet.PrintDefaults()
 			fmt.Printf("\n")
 		}
-
-		commander.Name = "default"
-		subcommandInfo_, ok := commander.subcommands[commander.Name]
-		// default 命令也没有注册
-		if !ok {
-			flagSet.Usage()
-			return nil
-		}
-		subcommandInfo = subcommandInfo_
 	}
 
 	if slices.Contains(argsToParse, "--help") || slices.Contains(argsToParse, "-help") {
