@@ -278,18 +278,6 @@ Global Options:
 	if err != nil {
 		return errors.Wrap(err, "Get data-dir config error.")
 	}
-	fsStat, err := os.Stat(dataDirStr)
-	if err != nil {
-		if strings.Contains(err.Error(), "no such file or directory") || fsStat == nil || !fsStat.IsDir() {
-			err = os.Mkdir(dataDirStr, 0755)
-			if err != nil {
-				return err
-			}
-			go_logger.Logger.DebugF("%s created", dataDirStr)
-		} else {
-			return err
-		}
-	}
 	commander.DataDir = dataDirStr
 
 	pprofEnable, err := go_config.ConfigManagerInstance.Bool("enable-pprof")

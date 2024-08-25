@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"os"
+	"path"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -17,6 +18,12 @@ type PersistenceType struct {
 
 func NewPersistenceType(filename string) (*PersistenceType, error) {
 	p := &PersistenceType{}
+
+	err := os.MkdirAll(path.Dir(filename), 0755)
+	if err != nil {
+		return nil, err
+	}
+
 	f, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		return nil, err
