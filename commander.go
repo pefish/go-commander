@@ -13,6 +13,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/pefish/go-commander/pkg/persistence"
 	go_config "github.com/pefish/go-config"
 	go_file "github.com/pefish/go-file"
 	go_format "github.com/pefish/go-format"
@@ -50,7 +51,6 @@ type Commander struct {
 	version     string
 	appName     string
 	appDesc     string
-	cache       Cache
 
 	Name       string
 	DataDir    string
@@ -312,13 +312,13 @@ Global Options:
 	}
 
 	// load cache
-	err = commander.cache.Init(path.Join(commander.DataDir, fmt.Sprintf("data_%s.json", commander.Name)))
+	persistence, err := persistence.NewPersistenceType(path.Join(commander.DataDir, fmt.Sprintf("data_%s.json", commander.Name)))
 	if err != nil {
 		return err
 	}
 
 	if subcommandInfo.Subcommand.Data() != nil {
-		_, err = commander.cache.Load(subcommandInfo.Subcommand.Data())
+		_, err = persistence.Load(subcommandInfo.Subcommand.Data())
 		if err != nil {
 			return err
 		}
@@ -334,7 +334,7 @@ Global Options:
 		waitErrorChan <- subcommandInfo.Subcommand.Start(commander)
 	}()
 
-	exitChan := make(chan os.Signal)
+	exitChan := make(chan os.Signal, 1)
 	signal.Notify(exitChan, syscall.SIGINT, syscall.SIGTERM)
 
 	var exitErr error
@@ -366,7 +366,11 @@ forceExit:
 		exitErr = errors.WithMessage(exitErr, fmt.Sprintf("Commander OnExitedBefore failed - %s", err.Error()))
 	}
 	if subcommandInfo.Subcommand.Data() != nil {
-		err = commander.cache.Save(subcommandInfo.Subcommand.Data())
+		err = persistence.Save(subcommandInfo.Subcommand.Data())
+		if err != nil {
+			return err
+		}
+		err = persistence.Close()
 		if err != nil {
 			return err
 		}
