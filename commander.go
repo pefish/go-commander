@@ -15,7 +15,6 @@ import (
 
 	"github.com/pefish/go-commander/pkg/persistence"
 	go_config "github.com/pefish/go-config"
-	go_file "github.com/pefish/go-file"
 	go_format "github.com/pefish/go-format"
 	i_logger "github.com/pefish/go-interface/i-logger"
 	t_logger "github.com/pefish/go-interface/t-logger"
@@ -225,7 +224,11 @@ Global Options:
 		return nil
 	}
 
-	if go_file.FileInstance.Exists(*envFile) {
+	exist, err := fileExists(*envFile)
+	if err != nil {
+		return errors.Wrap(err, "Env file exist error.")
+	}
+	if exist {
 		err = go_config.ConfigManagerInstance.SetEnvFile(*envFile)
 		if err != nil {
 			return errors.Errorf("Set env file error - %s", err)
@@ -443,4 +446,15 @@ func parseConfigToFlagSet(flagSet *flag.FlagSet, config interface{}) error {
 	}
 
 	return nil
+}
+
+func fileExists(fileOrPath string) (bool, error) {
+	_, err := os.Stat(fileOrPath)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
 }

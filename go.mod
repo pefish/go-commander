@@ -5,8 +5,7 @@ go 1.21
 toolchain go1.21.0
 
 require (
-	github.com/pefish/go-config v0.5.0
-	github.com/pefish/go-file v0.2.3
+	github.com/pefish/go-config v0.5.3
 	github.com/pefish/go-format v0.3.3
 	github.com/pefish/go-interface v0.1.2
 	github.com/pefish/go-logger v0.6.1
