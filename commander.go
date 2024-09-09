@@ -8,14 +8,12 @@ import (
 	"os"
 	"os/signal"
 	"path"
-	"reflect"
 	"slices"
 	"strings"
 	"syscall"
 
 	"github.com/pefish/go-commander/pkg/persistence"
 	go_config "github.com/pefish/go-config"
-	go_format "github.com/pefish/go-format"
 	i_logger "github.com/pefish/go-interface/i-logger"
 	t_logger "github.com/pefish/go-interface/t-logger"
 	go_logger "github.com/pefish/go-logger"
@@ -107,7 +105,7 @@ func (commander *Commander) Run() error {
 		flagSetJustForPrintHelpInfo := flag.NewFlagSet(commander.appName, flag.ExitOnError)
 		if subcommandInfo.Subcommand.Config() != nil {
 			// 将传进来的 Config 对象加载到 flagSet 中，使其能正常打印帮助信息
-			err := parseConfigToFlagSet(flagSetJustForPrintHelpInfo, subcommandInfo.Subcommand.Config())
+			err := go_config.ParseStructToFlagSet(flagSetJustForPrintHelpInfo, subcommandInfo.Subcommand.Config())
 			if err != nil {
 				return errors.Wrap(err, "ParseConfigToFlagSet flagSet error.")
 			}
@@ -152,7 +150,7 @@ Global Options:
 		flagSetJustForPrintHelpInfo := flag.NewFlagSet(commander.appName, flag.ExitOnError)
 		if subcommandInfo.Subcommand.Config() != nil {
 			// 将传进来的 Config 对象加载到 flagSet 中，使其能正常打印帮助信息
-			err := parseConfigToFlagSet(flagSetJustForPrintHelpInfo, subcommandInfo.Subcommand.Config())
+			err := go_config.ParseStructToFlagSet(flagSetJustForPrintHelpInfo, subcommandInfo.Subcommand.Config())
 			if err != nil {
 				return errors.Wrap(err, "ParseConfigToFlagSet flagSet error.")
 			}
@@ -209,7 +207,7 @@ Global Options:
 	}
 
 	// 自定义参数
-	err := parseConfigToFlagSet(flagSet, subcommandInfo.Subcommand.Config())
+	err := go_config.ParseStructToFlagSet(flagSet, subcommandInfo.Subcommand.Config())
 	if err != nil {
 		return errors.Wrap(err, "ParseConfigToFlagSet flagSet error.")
 	}
@@ -382,69 +380,6 @@ func (commander *Commander) onExitedAfter() error {
 }
 
 func (commander *Commander) onExitedBefore() error {
-	return nil
-}
-
-// parseConfigToFlagSet dynamically parses the config struct and sets up flags
-func parseConfigToFlagSet(flagSet *flag.FlagSet, config interface{}) error {
-	// Get the type and value of the config
-	configType := reflect.TypeOf(config)
-	configValue := reflect.ValueOf(config)
-
-	// If the config is a pointer, get the element it points to
-	if configType.Kind() == reflect.Ptr {
-		configType = configType.Elem()
-		configValue = configValue.Elem()
-	}
-
-	// Iterate over the fields of the config struct
-	for i := 0; i < configType.NumField(); i++ {
-		field := configType.Field(i)
-		fieldValue := configValue.Field(i)
-
-		// Get the tag values
-		jsonTag := field.Tag.Get("json")
-		defaultTag := field.Tag.Get("default")
-		usageTag := field.Tag.Get("usage")
-
-		// Use the tag values to define the flags
-		switch fieldValue.Kind() {
-		case reflect.String:
-			flagSet.String(jsonTag, defaultTag, usageTag)
-		case reflect.Bool:
-			defaultValue := false
-			if defaultTag == "true" {
-				defaultValue = true
-			}
-			flagSet.Bool(jsonTag, defaultValue, usageTag)
-		case reflect.Int:
-			defaultValue := 0
-			if defaultTag != "" {
-				i, err := go_format.FormatInstance.ToInt(defaultTag)
-				if err != nil {
-					return errors.Wrapf(err, "Default tag <%s> to int error.", defaultTag)
-				}
-				defaultValue = i
-			}
-			flagSet.Int(jsonTag, defaultValue, usageTag)
-		case reflect.Float64:
-			defaultValue := 0.0
-			if defaultTag != "" {
-				i, err := go_format.FormatInstance.ToFloat64(defaultTag)
-				if err != nil {
-					return errors.Wrapf(err, "Default tag <%s> to int error.", defaultTag)
-				}
-				defaultValue = i
-			}
-			flagSet.Float64(jsonTag, defaultValue, usageTag)
-		default:
-			if strings.Contains(fieldValue.String(), "commander.BasicConfig") {
-				continue
-			}
-			return errors.Errorf("Type <%s> not be supported.", fieldValue.Kind().String())
-		}
-	}
-
 	return nil
 }
 
