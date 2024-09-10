@@ -7,7 +7,7 @@ toolchain go1.21.0
 require (
 	github.com/pefish/go-config v0.5.4
 	github.com/pefish/go-interface v0.1.2
-	github.com/pefish/go-logger v0.6.1
+	github.com/pefish/go-logger v0.6.2
 	github.com/pkg/errors v0.9.1
 )
 

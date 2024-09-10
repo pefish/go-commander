@@ -292,10 +292,10 @@ Global Options:
 	if pprofEnable {
 		pprofHttpServer := &http.Server{Addr: pprofAddress}
 		go func() { // 无需担心进程退出，不存在 leak
-			go_logger.Logger.InfoF("Started pprof server on %s, you can open url [http://%s/debug/pprof/] to enjoy!!", pprofHttpServer.Addr, pprofHttpServer.Addr)
+			commander.Logger.InfoF("Started pprof server on %s, you can open url [http://%s/debug/pprof/] to enjoy!!", pprofHttpServer.Addr, pprofHttpServer.Addr)
 			err := pprofHttpServer.ListenAndServe()
 			if err != nil {
-				go_logger.Logger.WarnF("Pprof server start error - %s", err)
+				commander.Logger.WarnF("Pprof server start error - %s", err)
 			}
 		}()
 	}
@@ -337,9 +337,9 @@ forceExit:
 			// 要等待 start 函数退出
 			if ctrlCCountTemp == ctrlCCount {
 				commander.CancelFunc() // 通知下去，程序即将退出
-				go_logger.Logger.Info("Got interrupt, exiting...")
+				commander.Logger.Info("Got interrupt, exiting...")
 			} else {
-				go_logger.Logger.InfoF("Got interrupt, exiting... %d", ctrlCCountTemp)
+				commander.Logger.InfoF("Got interrupt, exiting... %d", ctrlCCountTemp)
 			}
 			ctrlCCountTemp--
 			if ctrlCCountTemp <= 0 { // Ctrl C n 次强制退出，不等 start 函数了
