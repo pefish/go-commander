@@ -121,14 +121,20 @@ func (commander *Commander) Run() error {
 %s
 
 Usage:
-  %s %s [OPTIONS] -- %s
+  %s %s [OPTIONS]%s
 
 Options:
 `,
 				subcommandInfo.Desc,
 				commander.appName,
 				commander.Name,
-				strings.Join(argsStrArr, " "),
+				func() string {
+					if len(argsStrArr) == 0 {
+						return ""
+					} else {
+						return fmt.Sprintf(" -- %s", strings.Join(argsStrArr, " "))
+					}
+				}(),
 			)
 			flagSetJustForPrintHelpInfo.PrintDefaults()
 			fmt.Printf(`
@@ -140,19 +146,17 @@ Global Options:
 	} else {
 		commander.Name = "default"
 		subcommandInfo_, ok := commander.subcommands[commander.Name]
-		// default 命令也没有注册
-		if !ok {
-			flagSet.Usage()
-			return nil
-		}
-		subcommandInfo = subcommandInfo_
-
 		flagSetJustForPrintHelpInfo := flag.NewFlagSet(commander.appName, flag.ExitOnError)
-		if subcommandInfo.Subcommand.Config() != nil {
-			// 将传进来的 Config 对象加载到 flagSet 中，使其能正常打印帮助信息
-			err := go_config.ParseStructToFlagSet(flagSetJustForPrintHelpInfo, subcommandInfo.Subcommand.Config())
-			if err != nil {
-				return errors.Wrap(err, "ParseConfigToFlagSet flagSet error.")
+		// default 命令也没有注册
+		if ok {
+			subcommandInfo = subcommandInfo_
+
+			if subcommandInfo.Subcommand.Config() != nil {
+				// 将传进来的 Config 对象加载到 flagSet 中，使其能正常打印帮助信息
+				err := go_config.ParseStructToFlagSet(flagSetJustForPrintHelpInfo, subcommandInfo.Subcommand.Config())
+				if err != nil {
+					return errors.Wrap(err, "ParseConfigToFlagSet flagSet error.")
+				}
 			}
 		}
 
@@ -186,12 +190,14 @@ Global Options:
 						fmt.Printf("  %s %s [OPTIONS]%s\t%s\n", commander.appName, name, argsStr, info.Desc)
 					}
 				}
-				fmt.Printf("\n")
 			}
-			fmt.Printf(`
+
+			if subcommandInfo_ != nil {
+				fmt.Printf(`
 Options:
 `)
-			flagSetJustForPrintHelpInfo.PrintDefaults()
+				flagSetJustForPrintHelpInfo.PrintDefaults()
+			}
 
 			fmt.Printf(`
 Global Options:
@@ -201,7 +207,7 @@ Global Options:
 		}
 	}
 
-	if slices.Contains(argsToParse, "--help") || slices.Contains(argsToParse, "-help") {
+	if subcommandInfo == nil || slices.Contains(argsToParse, "--help") || slices.Contains(argsToParse, "-help") {
 		flagSet.Usage()
 		return nil
 	}

@@ -1,11 +1,11 @@
 package main
 
 import (
+	"log"
 	_ "net/http/pprof"
 
 	commander2 "github.com/pefish/go-commander"
 	go_config "github.com/pefish/go-config"
-	go_logger "github.com/pefish/go-logger"
 )
 
 type Config struct {
@@ -37,14 +37,14 @@ func (t TestSubCommand) Init(command *commander2.Commander) error {
 }
 
 func (t TestSubCommand) Start(command *commander2.Commander) error {
-	go_logger.Logger.InfoFRaw(
+	command.Logger.InfoFRaw(
 		"command: %s, test param: %s, args: %#v",
 		command.Name,
 		go_config.ConfigManagerInstance.MustString("test"),
 		command.Args,
 	)
-	go_logger.Logger.InfoFRaw("GlobalConfig: %#v", GlobalConfig)
-	go_logger.Logger.InfoFRaw("Data: %#v", Data)
+	command.Logger.InfoFRaw("GlobalConfig: %#v", GlobalConfig)
+	command.Logger.InfoFRaw("Data: %#v", Data)
 	Data.Data1 = "data2"
 	return nil
 }
@@ -76,7 +76,7 @@ func main() {
 
 	err := commander.Run()
 	if err != nil {
-		go_logger.Logger.ErrorFRaw("%s", err.Error())
+		log.Fatal(err)
 	}
 }
 
