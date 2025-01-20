@@ -32,6 +32,7 @@ type BasicConfig struct {
 	Version      bool   `json:"version"`
 	LogLevel     string `json:"log-level"`
 	Config       string `json:"config"`
+	EnvFile      string `json:"env-file"`
 	EnablePprof  bool   `json:"enable-pprof"`
 	PprofAddress string `json:"pprof-address"`
 	DataDir      string `json:"data-dir"`
@@ -59,13 +60,14 @@ type Commander struct {
 	Logger     i_logger.ILogger
 }
 
-func NewCommander(appName, version, appDesc string) *Commander {
+func New(appName, version, appDesc string) *Commander {
 	return &Commander{
 		subcommands: make(map[string]*SubcommandInfo),
 		version:     version,
 		appName:     appName,
 		appDesc:     appDesc,
 		Args:        make(map[string]string),
+		Logger:      go_logger.NewLogger(t_logger.Level_DEBUG),
 	}
 }
 

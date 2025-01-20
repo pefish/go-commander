@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	_ "net/http/pprof"
 
 	commander2 "github.com/pefish/go-commander"
@@ -9,13 +8,16 @@ import (
 )
 
 type Config struct {
-	Test    string `json:"test" default:"default-flag-test" usage:"test flag set"`
-	FuckInt int    `json:"fuck-int" default:"888" usage:"test fuck int"`
-	Abc     int    `json:"abc" default:"888" usage:"test fuck int"`
-	commander2.BasicConfig
+	Test                   string `json:"test" default:"default-flag-test" usage:"test flag set"`
+	FuckInt                int    `json:"fuck-int" default:"888" usage:"test fuck int"`
+	Abc                    int    `json:"abc" default:"888" usage:"test fuck int"`
+	commander2.BasicConfig `json:",omitempty"`
 }
 
-var GlobalConfig Config
+var config struct {
+	Config
+	Name string `json:"name" default:"name" usage:"Name."`
+}
 
 var Data struct {
 	Data1 string `json:"data1"`
@@ -25,7 +27,7 @@ type TestSubCommand struct {
 }
 
 func (t TestSubCommand) Config() interface{} {
-	return &GlobalConfig
+	return &config
 }
 
 func (t TestSubCommand) Data() interface{} {
@@ -43,7 +45,7 @@ func (t TestSubCommand) Start(command *commander2.Commander) error {
 		go_config.ConfigManagerInstance.MustString("test"),
 		command.Args,
 	)
-	command.Logger.InfoFRaw("GlobalConfig: %#v", GlobalConfig)
+	command.Logger.InfoFRaw("config: %#v", config)
 	command.Logger.InfoFRaw("Data: %#v", Data)
 	Data.Data1 = "data2"
 	return nil
@@ -56,7 +58,7 @@ func (t TestSubCommand) OnExited(data *commander2.Commander) error {
 
 func main() {
 	//go_logger.Logger.Error(errors.WithMessage(errors.New("123"), "ywrtsdfhs"))
-	commander := commander2.NewCommander("test", "v0.0.1", "小工具")
+	commander := commander2.New("test", "v0.0.1", "小工具")
 	//commander.RegisterSubcommand("test", "这是一个测试", TestSubCommand{})
 	commander.RegisterSubcommand("test2", &commander2.SubcommandInfo{
 		Desc: "这是一个 test2 子命令",
@@ -76,7 +78,7 @@ func main() {
 
 	err := commander.Run()
 	if err != nil {
-		log.Fatal(err)
+		commander.Logger.Error(err)
 	}
 }
 
@@ -89,3 +91,4 @@ func main() {
 // TEST=env-test go run ./_example --config ./_example/config.yaml -- 1.txt
 // FUCK_INT=111 go run ./_example --fuck-int=123 -- 1.txt
 // FUCK_INT=111 go run ./_example --fuck-int=123 --env-file=./_example/.env -- 1.txt
+// FUCK_INT=111 go run ./_example --fuck-int=123 --env-file=./_example/.env --name=name1 -- 1.txt
