@@ -360,7 +360,7 @@ forceExit:
 
 	err = commander.onExitedBefore()
 	if err != nil {
-		exitErr = errors.WithMessage(exitErr, fmt.Sprintf("Commander OnExitedBefore failed - %s", err.Error()))
+		return errors.Wrap(err, "OnExitedBefore failed")
 	}
 	if subcommandInfo.Subcommand.Data() != nil {
 		err = persistence.Save(subcommandInfo.Subcommand.Data())
@@ -374,11 +374,11 @@ forceExit:
 	}
 	err = subcommandInfo.Subcommand.OnExited(commander)
 	if err != nil {
-		exitErr = errors.WithMessage(exitErr, fmt.Sprintf("OnExited failed - %s", err.Error()))
+		return errors.Wrap(err, "OnExited failed")
 	}
 	err = commander.onExitedAfter()
 	if err != nil {
-		exitErr = errors.WithMessage(exitErr, fmt.Sprintf("Commander OnExitedAfter failed - %s", err.Error()))
+		return errors.Wrap(err, "OnExitedAfter failed")
 	}
 	return exitErr
 }
