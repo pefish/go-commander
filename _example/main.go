@@ -2,8 +2,10 @@ package main
 
 import (
 	_ "net/http/pprof"
+	"sync"
 
 	commander2 "github.com/pefish/go-commander"
+	"github.com/pefish/go-commander/pkg/persistence"
 	go_config "github.com/pefish/go-config"
 )
 
@@ -48,6 +50,23 @@ func (t TestSubCommand) Start(command *commander2.Commander) error {
 	command.Logger.InfoFRaw("config: %#v", config)
 	command.Logger.InfoFRaw("Data: %#v", Data)
 	Data.Data1 = "data2"
+
+	var a sync.Map
+	a.Store(11, "aa")
+	err := persistence.SaveToDisk("./a.glob", &a)
+	if err != nil {
+		return err
+	}
+
+	var b sync.Map
+	err = persistence.LoadFromDisk("./a.glob", &b)
+	if err != nil {
+		return err
+	}
+	b.Range(func(key, value any) bool {
+		command.Logger.InfoF("<key: %#v> <value: %#v>", key, value)
+		return true
+	})
 	return nil
 }
 

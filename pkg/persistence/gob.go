@@ -11,9 +11,9 @@ import (
 )
 
 func SaveToDisk(filename string, m *sync.Map) error {
-	tempMap := make(map[string]interface{})
+	tempMap := make(map[any]any)
 	m.Range(func(key, value any) bool {
-		tempMap[key.(string)] = value
+		tempMap[key] = value
 		return true
 	})
 
@@ -46,7 +46,7 @@ func LoadFromDisk(filename string, m *sync.Map) error {
 	}
 	defer file.Close()
 
-	tempMap := make(map[string]interface{})
+	tempMap := make(map[any]any)
 	decoder := gob.NewDecoder(file)
 	err = decoder.Decode(&tempMap)
 	if err != nil {
