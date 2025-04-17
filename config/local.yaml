@@ -1,8 +1,0 @@
-
-db-db: "analysis"
-db-host: "52.68.233.193"
-db-readHost: "52.68.233.193"
-db-user: "analysis"
-db-pass: "356htiort2rtig2jsfgj"
-log-level: info
-redis-host: 127.0.0.1

@@ -18,7 +18,8 @@ type Config struct {
 
 var config struct {
 	Config
-	Name string `json:"name" default:"name" usage:"Name."`
+	Name  string `json:"name" default:"name" usage:"Name."`
+	Name1 string `json:"name1" usage:"Name1."`
 }
 
 var Data struct {
@@ -51,22 +52,22 @@ func (t TestSubCommand) Start(command *commander2.Commander) error {
 	command.Logger.InfoFRaw("Data: %#v", Data)
 	Data.Data1 = "data2"
 
-	var a sync.Map
-	a.Store(11, "aa")
-	err := persistence.SaveToDisk("./a.glob", &a)
-	if err != nil {
-		return err
-	}
+	// var a sync.Map
+	// a.Store(11, "aa")
+	// err := persistence.SaveToDisk("./a.glob", &a)
+	// if err != nil {
+	// 	return err
+	// }
 
-	var b sync.Map
-	err = persistence.LoadFromDisk("./a.glob", &b)
-	if err != nil {
-		return err
-	}
-	b.Range(func(key, value any) bool {
-		command.Logger.InfoF("<key: %#v> <value: %#v>", key, value)
-		return true
-	})
+	// var b sync.Map
+	// err = persistence.LoadFromDisk("./a.glob", &b)
+	// if err != nil {
+	// 	return err
+	// }
+	// b.Range(func(key, value any) bool {
+	// 	command.Logger.InfoF("<key: %#v> <value: %#v>", key, value)
+	// 	return true
+	// })
 	return nil
 }
 

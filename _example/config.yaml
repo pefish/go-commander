@@ -1,7 +1,0 @@
-test: config-file-test
-log-level: debug
-db:
-  db: "db"
-  host: "host"
-  user: "user"
-  pass: "pass"

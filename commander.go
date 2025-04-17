@@ -12,6 +12,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/joho/godotenv"
 	"github.com/pefish/go-commander/pkg/persistence"
 	go_config "github.com/pefish/go-config"
 	i_logger "github.com/pefish/go-interface/i-logger"
@@ -235,6 +236,11 @@ Global Options:
 		return errors.Wrap(err, "Env file exist error.")
 	}
 	if exist {
+		envMap, _ := godotenv.Read(*envFile)
+		for k, v := range envMap {
+			os.Setenv(k, v)
+		}
+
 		err = go_config.ConfigManagerInstance.SetEnvFile(*envFile)
 		if err != nil {
 			return errors.Errorf("Set env file error - %s", err)
